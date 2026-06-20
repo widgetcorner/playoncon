@@ -9,9 +9,11 @@ import 'package:path_provider/path_provider.dart';
 
 import '../config/app_config.dart';
 import '../models/event.dart';
-import '../models/venue_location.dart';
 import 'csv_parser.dart';
+import 'locations_store.dart';
 import 'network_monitor.dart';
+
+export 'locations_store.dart' show venueLocationsProvider;
 
 class ScheduleState {
   final List<Event> events;
@@ -43,18 +45,6 @@ class ScheduleState {
 
   static const empty = ScheduleState(events: []);
 }
-
-final venueLocationsProvider = FutureProvider<List<VenueLocation>>((ref) async {
-  try {
-    final raw = await rootBundle.loadString('assets/data/locations.json');
-    final list = jsonDecode(raw) as List<dynamic>;
-    return list
-        .map((e) => VenueLocation.fromJson(e as Map<String, dynamic>))
-        .toList();
-  } catch (_) {
-    return const [];
-  }
-});
 
 final scheduleRepositoryProvider =
     StateNotifierProvider<ScheduleRepository, ScheduleState>((ref) {
@@ -98,16 +88,33 @@ class ScheduleRepository extends StateNotifier<ScheduleState> {
     }
     state = state.copyWith(isSyncing: true, clearError: true);
     try {
-      final resp =
-          await http.get(Uri.parse(AppConfig.scheduleCsvUrl)).timeout(
-                const Duration(seconds: 20),
-              );
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        throw HttpException('HTTP ${resp.statusCode}');
-      }
+      final urls = AppConfig.scheduleCsvUrls;
       final locations = await _ref.read(venueLocationsProvider.future);
-      final parser = CsvScheduleParser(locations);
-      final events = parser.parse(resp.body);
+      final parser = CsvScheduleParser(
+        locations,
+        eventThursday: AppConfig.hasEventThursday
+            ? DateTime.tryParse(AppConfig.eventThursday)
+            : null,
+      );
+
+      final bodies = await Future.wait(urls.map((url) async {
+        final resp = await http
+            .get(Uri.parse(url))
+            .timeout(const Duration(seconds: 20));
+        if (resp.statusCode < 200 || resp.statusCode >= 300) {
+          throw HttpException('HTTP ${resp.statusCode} for $url');
+        }
+        return resp.body;
+      }));
+
+      final merged = <String, Event>{};
+      for (final body in bodies) {
+        for (final e in parser.parse(body)) {
+          merged[e.id] = e;
+        }
+      }
+      final events = merged.values.toList();
+
       await _writeCache(events);
       state = ScheduleState(
         events: events,

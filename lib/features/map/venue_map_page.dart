@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/event.dart';
 import '../../models/venue_location.dart';
+import '../../services/locations_store.dart';
 import '../../services/schedule_repository.dart';
 
 const _mapAsset = AssetImage('assets/images/venue-map.png');
@@ -16,10 +19,15 @@ class VenueMapPage extends ConsumerWidget {
     final locationsAsync = ref.watch(venueLocationsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Venue Map')),
       body: locationsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Map unavailable: $e')),
+        loading: () => Scaffold(
+          appBar: AppBar(title: const Text('Venue Map')),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, st) => Scaffold(
+          appBar: AppBar(title: const Text('Venue Map')),
+          body: Center(child: Text('Map unavailable: $e')),
+        ),
         data: (locations) => _MapBody(locations: locations),
       ),
     );
@@ -39,20 +47,31 @@ class _MapBodyState extends ConsumerState<_MapBody> {
   ImageStream? _stream;
   ImageStreamListener? _listener;
 
+  bool _editing = false;
+  late List<VenueLocation> _draft;
+  String? _selectedKey;
+
   @override
   void initState() {
     super.initState();
+    _draft = List.of(widget.locations);
     _stream = _mapAsset.resolve(ImageConfiguration.empty);
     _listener = ImageStreamListener((info, _) {
       if (!mounted) return;
       setState(() {
-        _imageSize = Size(info.image.width.toDouble(),
-            info.image.height.toDouble());
+        _imageSize =
+            Size(info.image.width.toDouble(), info.image.height.toDouble());
       });
     }, onError: (e, _) {
       if (mounted) setState(() => _imageSize = const Size(1500, 1150));
     });
     _stream!.addListener(_listener!);
+  }
+
+  @override
+  void didUpdateWidget(covariant _MapBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_editing) _draft = List.of(widget.locations);
   }
 
   @override
@@ -63,82 +82,642 @@ class _MapBodyState extends ConsumerState<_MapBody> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_imageSize == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final imageRatio = _imageSize!.width / _imageSize!.height;
+  List<VenueLocation> get _activeLocations =>
+      _editing ? _draft : widget.locations;
 
-    return InteractiveViewer(
-      maxScale: 6,
-      minScale: 1.0,
-      child: LayoutBuilder(builder: (context, constraints) {
-        final cw = constraints.maxWidth;
-        final ch = constraints.maxHeight;
-        final containerRatio = cw / ch;
+  void _enterEdit() {
+    setState(() {
+      _editing = true;
+      _draft = List.of(widget.locations);
+      _selectedKey = null;
+    });
+  }
 
-        double w, h, dx, dy;
-        if (containerRatio > imageRatio) {
-          // container is wider than image: fit height, letterbox horizontally
-          h = ch;
-          w = h * imageRatio;
-          dx = (cw - w) / 2;
-          dy = 0;
-        } else {
-          // container is narrower: fit width, letterbox vertically
-          w = cw;
-          h = w / imageRatio;
-          dx = 0;
-          dy = (ch - h) / 2;
-        }
+  void _cancelEdit() {
+    setState(() {
+      _editing = false;
+      _selectedKey = null;
+      _draft = List.of(widget.locations);
+    });
+  }
 
-        return Stack(children: [
-          Positioned(
-            left: dx,
-            top: dy,
-            width: w,
-            height: h,
-            child: const Image(image: _mapAsset, fit: BoxFit.fill),
-          ),
-          for (final loc in widget.locations)
-            Positioned(
-              left: dx + loc.rect.x * w,
-              top: dy + loc.rect.y * h,
-              width: loc.rect.w * w,
-              height: loc.rect.h * h,
-              child: Tooltip(
-                message: loc.displayName,
-                preferBelow: false,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => _showEventsForLocation(context, ref, loc),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF2D5E3E).withValues(alpha: 0.22),
-                      border: Border.all(
-                          color:
-                              const Color(0xFF2D5E3E).withValues(alpha: 0.85),
-                          width: 2),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ]);
-      }),
+  Future<void> _saveEdit() async {
+    await ref.read(locationsStoreProvider).save(_draft);
+    ref.invalidate(venueLocationsProvider);
+    if (!mounted) return;
+    setState(() {
+      _editing = false;
+      _selectedKey = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Saved hotspots to override file')),
     );
   }
 
-  void _showEventsForLocation(
-      BuildContext context, WidgetRef ref, VenueLocation loc) {
+  Future<void> _resetBundled() async {
+    final ok = await _confirm(
+      title: 'Reset to bundled hotspots?',
+      message:
+          'Deletes the on-device override and reloads the hotspots shipped in the asset.',
+      confirmLabel: 'Reset',
+      destructive: true,
+    );
+    if (!ok) return;
+    await ref.read(locationsStoreProvider).reset();
+    ref.invalidate(venueLocationsProvider);
+    if (!mounted) return;
+    setState(() {
+      _editing = false;
+      _selectedKey = null;
+    });
+  }
+
+  Future<void> _copyJson() async {
+    final json = LocationsStore.encode(_draft);
+    await Clipboard.setData(ClipboardData(text: json));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Hotspot JSON copied to clipboard')),
+    );
+  }
+
+  void _addHotspot() async {
+    final result = await showDialog<({String key, String displayName})>(
+      context: context,
+      builder: (_) => const _NameDialog(
+        initialKey: '',
+        initialDisplayName: '',
+        title: 'New hotspot',
+      ),
+    );
+    if (result == null) return;
+    if (_draft.any((l) => l.key == result.key)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Key "${result.key}" already exists')),
+      );
+      return;
+    }
+    setState(() {
+      _draft.add(VenueLocation(
+        key: result.key,
+        displayName: result.displayName,
+        rect: const NormalizedRect(x: 0.45, y: 0.45, w: 0.06, h: 0.06),
+      ));
+      _selectedKey = result.key;
+    });
+  }
+
+  void _onHotspotTapped(VenueLocation loc) {
+    if (!_editing) {
+      _showEventsForLocation(loc);
+      return;
+    }
+    setState(() => _selectedKey =
+        _selectedKey == loc.key ? null : loc.key);
+  }
+
+  Future<void> _editHotspot(VenueLocation loc) async {
+    final result = await showDialog<_HotspotEditAction>(
+      context: context,
+      builder: (_) => _HotspotEditSheet(location: loc),
+    );
+    if (result == null) return;
+    switch (result.kind) {
+      case _HotspotEditKind.rename:
+        if (result.key == null || result.displayName == null) return;
+        if (result.key != loc.key &&
+            _draft.any((l) => l.key == result.key)) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Key "${result.key}" already exists')),
+          );
+          return;
+        }
+        setState(() {
+          final i = _draft.indexWhere((l) => l.key == loc.key);
+          if (i < 0) return;
+          _draft[i] = _draft[i].copyWith(
+            key: result.key,
+            displayName: result.displayName,
+          );
+          _selectedKey = result.key;
+        });
+        break;
+      case _HotspotEditKind.delete:
+        setState(() {
+          _draft.removeWhere((l) => l.key == loc.key);
+          _selectedKey = null;
+        });
+        break;
+    }
+  }
+
+  void _moveHotspot(VenueLocation loc, double dx, double dy, double w, double h) {
+    setState(() {
+      final i = _draft.indexWhere((l) => l.key == loc.key);
+      if (i < 0) return;
+      final old = _draft[i].rect;
+      final newX = (old.x + dx / w).clamp(0.0, 1.0 - old.w);
+      final newY = (old.y + dy / h).clamp(0.0, 1.0 - old.h);
+      _draft[i] = _draft[i].copyWith(
+        rect: old.copyWith(x: newX, y: newY),
+      );
+    });
+  }
+
+  void _resizeHotspot(VenueLocation loc, double dx, double dy, double w, double h) {
+    setState(() {
+      final i = _draft.indexWhere((l) => l.key == loc.key);
+      if (i < 0) return;
+      final old = _draft[i].rect;
+      final newW = (old.w + dx / w).clamp(0.015, 1.0 - old.x);
+      final newH = (old.h + dy / h).clamp(0.015, 1.0 - old.y);
+      _draft[i] = _draft[i].copyWith(
+        rect: old.copyWith(w: newW, h: newH),
+      );
+    });
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool destructive = false,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: destructive
+                ? TextButton.styleFrom(
+                    foregroundColor: Theme.of(ctx).colorScheme.error)
+                : null,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  void _showEventsForLocation(VenueLocation loc) {
     final all = ref.read(scheduleRepositoryProvider).events;
     final atLoc = all.where((e) => e.locationKey == loc.key).toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
     showModalBottomSheet(
       context: context,
       builder: (_) => _LocationEventsSheet(location: loc, events: atLoc),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_imageSize == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Venue Map')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final imageRatio = _imageSize!.width / _imageSize!.height;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_editing ? 'Edit Hotspots' : 'Venue Map'),
+        backgroundColor: _editing
+            ? Theme.of(context).colorScheme.tertiaryContainer
+            : null,
+        foregroundColor: _editing
+            ? Theme.of(context).colorScheme.onTertiaryContainer
+            : null,
+        leading: _editing
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: 'Discard changes',
+                onPressed: _cancelEdit,
+              )
+            : null,
+        actions: _editing
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  tooltip: 'Add hotspot',
+                  onPressed: _addHotspot,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy),
+                  tooltip: 'Copy JSON to clipboard',
+                  onPressed: _copyJson,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.restart_alt),
+                  tooltip: 'Reset to bundled',
+                  onPressed: _resetBundled,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.check),
+                  tooltip: 'Save',
+                  onPressed: _saveEdit,
+                ),
+              ]
+            : (kDebugMode
+                ? [
+                    IconButton(
+                      icon: const Icon(Icons.edit_location_alt_outlined),
+                      tooltip: 'Edit hotspots',
+                      onPressed: _enterEdit,
+                    ),
+                  ]
+                : null),
+      ),
+      body: Column(
+        children: [
+          if (_editing) const _EditModeBanner(),
+          Expanded(
+            child: InteractiveViewer(
+              maxScale: 6,
+              minScale: 1.0,
+              panEnabled: !_editing || _selectedKey == null,
+              child: LayoutBuilder(builder: (context, constraints) {
+                final cw = constraints.maxWidth;
+                final ch = constraints.maxHeight;
+                final containerRatio = cw / ch;
+
+                double w, h, dx, dy;
+                if (containerRatio > imageRatio) {
+                  h = ch;
+                  w = h * imageRatio;
+                  dx = (cw - w) / 2;
+                  dy = 0;
+                } else {
+                  w = cw;
+                  h = w / imageRatio;
+                  dx = 0;
+                  dy = (ch - h) / 2;
+                }
+
+                return Stack(children: [
+                  Positioned(
+                    left: dx,
+                    top: dy,
+                    width: w,
+                    height: h,
+                    child: const Image(image: _mapAsset, fit: BoxFit.fill),
+                  ),
+                  for (final loc in _activeLocations)
+                    _HotspotWidget(
+                      location: loc,
+                      areaW: w,
+                      areaH: h,
+                      offsetX: dx,
+                      offsetY: dy,
+                      editing: _editing,
+                      selected: _editing && _selectedKey == loc.key,
+                      onTap: () => _onHotspotTapped(loc),
+                      onLongPress:
+                          _editing ? () => _editHotspot(loc) : null,
+                      onMove: _editing
+                          ? (mx, my) => _moveHotspot(loc, mx, my, w, h)
+                          : null,
+                      onResize: _editing
+                          ? (rx, ry) => _resizeHotspot(loc, rx, ry, w, h)
+                          : null,
+                    ),
+                ]);
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditModeBanner extends StatelessWidget {
+  const _EditModeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.tertiaryContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: DefaultTextStyle(
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onTertiaryContainer,
+          fontSize: 12,
+        ),
+        child: const Text(
+          'Drag a hotspot to move it. Drag the corner to resize. '
+          'Tap to select; long-press to rename or delete.',
+        ),
+      ),
+    );
+  }
+}
+
+class _HotspotWidget extends StatelessWidget {
+  final VenueLocation location;
+  final double areaW;
+  final double areaH;
+  final double offsetX;
+  final double offsetY;
+  final bool editing;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final void Function(double dx, double dy)? onMove;
+  final void Function(double dx, double dy)? onResize;
+
+  const _HotspotWidget({
+    required this.location,
+    required this.areaW,
+    required this.areaH,
+    required this.offsetX,
+    required this.offsetY,
+    required this.editing,
+    required this.selected,
+    required this.onTap,
+    this.onLongPress,
+    this.onMove,
+    this.onResize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final left = offsetX + location.rect.x * areaW;
+    final top = offsetY + location.rect.y * areaH;
+    final width = location.rect.w * areaW;
+    final height = location.rect.h * areaH;
+
+    final fill = editing
+        ? (selected
+            ? scheme.tertiary.withValues(alpha: 0.45)
+            : scheme.tertiary.withValues(alpha: 0.22))
+        : const Color(0xFF2D5E3E).withValues(alpha: 0.22);
+    final border = editing
+        ? (selected ? scheme.tertiary : scheme.tertiary.withValues(alpha: 0.7))
+        : const Color(0xFF2D5E3E).withValues(alpha: 0.85);
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        onPanUpdate: onMove == null
+            ? null
+            : (d) => onMove!(d.delta.dx, d.delta.dy),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Tooltip(
+              message: location.displayName,
+              preferBelow: false,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: editing ? BoxShape.rectangle : BoxShape.circle,
+                  borderRadius:
+                      editing ? BorderRadius.circular(4) : null,
+                  color: fill,
+                  border: Border.all(color: border, width: selected ? 3 : 2),
+                ),
+                child: editing
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: Text(
+                            location.key,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: scheme.onTertiaryContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+            ),
+            if (editing && onResize != null)
+              Positioned(
+                right: -8,
+                bottom: -8,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: (d) => onResize!(d.delta.dx, d.delta.dy),
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: scheme.tertiary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.open_in_full,
+                      size: 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _HotspotEditKind { rename, delete }
+
+class _HotspotEditAction {
+  final _HotspotEditKind kind;
+  final String? key;
+  final String? displayName;
+  const _HotspotEditAction.rename(this.key, this.displayName)
+      : kind = _HotspotEditKind.rename;
+  const _HotspotEditAction.delete()
+      : kind = _HotspotEditKind.delete,
+        key = null,
+        displayName = null;
+}
+
+class _HotspotEditSheet extends StatefulWidget {
+  final VenueLocation location;
+  const _HotspotEditSheet({required this.location});
+
+  @override
+  State<_HotspotEditSheet> createState() => _HotspotEditSheetState();
+}
+
+class _HotspotEditSheetState extends State<_HotspotEditSheet> {
+  late final TextEditingController _key;
+  late final TextEditingController _name;
+
+  @override
+  void initState() {
+    super.initState();
+    _key = TextEditingController(text: widget.location.key);
+    _name = TextEditingController(text: widget.location.displayName);
+  }
+
+  @override
+  void dispose() {
+    _key.dispose();
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit hotspot'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _key,
+            decoration: const InputDecoration(
+              labelText: 'Key (slug, used to match events)',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(
+              labelText: 'Display name (matches the sheet venue text)',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          onPressed: () => Navigator.pop(
+            context,
+            const _HotspotEditAction.delete(),
+          ),
+          child: const Text('Delete'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final k = _key.text.trim();
+            final n = _name.text.trim();
+            if (k.isEmpty || n.isEmpty) return;
+            Navigator.pop(context, _HotspotEditAction.rename(k, n));
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _NameDialog extends StatefulWidget {
+  final String initialKey;
+  final String initialDisplayName;
+  final String title;
+  const _NameDialog({
+    required this.initialKey,
+    required this.initialDisplayName,
+    required this.title,
+  });
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _key;
+  late final TextEditingController _name;
+
+  @override
+  void initState() {
+    super.initState();
+    _key = TextEditingController(text: widget.initialKey);
+    _name = TextEditingController(text: widget.initialDisplayName);
+    _name.addListener(_autoSlug);
+  }
+
+  void _autoSlug() {
+    if (_key.text.isEmpty) {
+      final slug = _name.text
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+          .replaceAll(RegExp(r'^-|-$'), '');
+      _key.value = TextEditingValue(text: slug);
+    }
+  }
+
+  @override
+  void dispose() {
+    _name.removeListener(_autoSlug);
+    _key.dispose();
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Display name (matches the sheet venue text)',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _key,
+            decoration: const InputDecoration(
+              labelText: 'Key (slug, used to match events)',
+              helperText: 'Auto-generated; edit if needed',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final k = _key.text.trim();
+            final n = _name.text.trim();
+            if (k.isEmpty || n.isEmpty) return;
+            Navigator.pop(context, (key: k, displayName: n));
+          },
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }

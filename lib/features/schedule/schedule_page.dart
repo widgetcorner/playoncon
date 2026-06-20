@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/event.dart';
 import '../../services/network_monitor.dart';
 import '../../services/schedule_repository.dart';
+import 'attribute_pill.dart';
 import 'event_detail_page.dart';
 
 class SchedulePage extends ConsumerStatefulWidget {
@@ -121,13 +122,24 @@ class _EventTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timeFmt = DateFormat('h:mm a');
+    final subtitleLine = [
+      '${timeFmt.format(event.startTime)} – ${timeFmt.format(event.endTime)}',
+      if (event.locationDisplayName != null) event.locationDisplayName!,
+      if (event.track != null) event.track!,
+    ].join(' · ');
     return ListTile(
       title: Text(event.title),
-      subtitle: Text([
-        '${timeFmt.format(event.startTime)} – ${timeFmt.format(event.endTime)}',
-        if (event.locationDisplayName != null) event.locationDisplayName!,
-        if (event.track != null) event.track!,
-      ].join(' · ')),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(subtitleLine),
+          if (event.attributes.isNotEmpty)
+            AttributePillRow(
+              codes: event.attributes,
+              padding: const EdgeInsets.only(top: 4),
+            ),
+        ],
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => EventDetailPage(event: event)),

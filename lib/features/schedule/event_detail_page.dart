@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/event.dart';
+import 'attribute_pill.dart';
 
 class EventDetailPage extends StatelessWidget {
   final Event event;
@@ -27,6 +28,10 @@ class EventDetailPage extends StatelessWidget {
             _DetailRow(icon: Icons.label_outline, label: event.track!),
           if (event.presenter != null)
             _DetailRow(icon: Icons.person_outline, label: event.presenter!),
+          if (event.attributes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            AttributePillRow(codes: event.attributes, dense: false),
+          ],
           if (event.details != null) ...[
             const SizedBox(height: 16),
             Text(event.details!),
