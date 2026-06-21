@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui show TextDirection;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,8 +15,13 @@ import '../../services/location_service.dart';
 import '../../services/locations_store.dart';
 import '../../services/map_georeference.dart';
 import '../../services/schedule_repository.dart';
+import '../../theme/poc_theme.dart';
+import 'venue_map_data.dart';
 
 const _mapAsset = AssetImage('assets/images/venue-map.png');
+
+/// Scale used by the "Detail" preset and the deep-link focus animation.
+const double _kDetailScale = 2.0;
 
 class VenueMapPage extends ConsumerWidget {
   const VenueMapPage({super.key});
@@ -56,22 +62,31 @@ class _MapBodyState extends ConsumerState<_MapBody>
 
   bool _editing = false;
   late List<VenueLocation> _draft;
-  String? _selectedKey;
+  String? _selectedKey; // editor-mode selection (hotspot being edited)
 
-  // "Show on map" deep-link support.
+  // View-mode (Concept C) state.
+  String? _selectedVenueKey; // pin whose info sheet is open
+  bool _overview = false; // Overview ⇄ Detail zoom preset
+  bool _didInitialFrame = false; // applied the Detail framing once
+
+  // "Show on map" deep-link + zoom-preset animation share one controller.
   final TransformationController _transform = TransformationController();
   late final AnimationController _focusAnim = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 450),
+    duration: const Duration(milliseconds: 320),
   );
   Animation<Matrix4>? _focusTween;
   Size? _viewport;
-  String? _highlightKey;
-  Timer? _highlightTimer;
+
+  // Letterboxed base-image rect within the viewport (recomputed each layout).
+  double _boardW = 0, _boardH = 0, _boardDx = 0, _boardDy = 0;
+  // Cached label text metrics (constant font → measure once per name).
+  final Map<String, Size> _labelSizeCache = {};
 
   // "You are here" blue dot.
   bool _locationOn = false;
   bool _pendingCenterOnLocation = false;
+  bool _awaitingFirstFix = false; // just enabled; waiting on the first GPS fix
 
   @override
   void initState() {
@@ -119,50 +134,67 @@ class _MapBodyState extends ConsumerState<_MapBody>
     if (_stream != null && _listener != null) {
       _stream!.removeListener(_listener!);
     }
-    _highlightTimer?.cancel();
     _focusAnim.dispose();
     _transform.dispose();
     super.dispose();
   }
 
-  /// Handles a "Show on map" request: pan/zoom to the hotspot and pulse a
-  /// highlight on it. No-op (silently) if the key isn't a known pin.
+  /// Handles a "Show on map" request: select that pin, drop to Detail, and
+  /// center on it. No-op (silently) if the key isn't a known pin.
   void _focusOnHotspot(String key) {
     // Consume the request so the same hotspot can be re-targeted later.
     ref.read(mapFocusProvider.notifier).state = null;
     if (_editing) return;
-    VenueLocation? loc;
-    for (final l in widget.locations) {
-      if (l.key == key) {
-        loc = l;
-        break;
-      }
-    }
+    final loc = _locFor(key);
     if (loc == null) return;
-    final target = loc;
-    _highlightTimer?.cancel();
-    setState(() => _highlightKey = key);
-    _highlightTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _highlightKey = null);
+    setState(() {
+      _selectedVenueKey = key;
+      _overview = false;
     });
     // Wait a frame so the Map tab has laid out (it may have been off-screen).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _animateTo(target);
+      if (mounted) _animateToLocation(loc);
     });
   }
 
-  void _animateTo(VenueLocation loc) {
+  VenueLocation? _locFor(String? key) {
+    if (key == null) return null;
+    for (final l in widget.locations) {
+      if (l.key == key) return l;
+    }
+    return null;
+  }
+
+  void _animateToLocation(VenueLocation loc) {
     _animateToNormalized(
       loc.rect.x + loc.rect.w / 2,
       loc.rect.y + loc.rect.h / 2,
     );
   }
 
-  /// Animates the viewer to center a normalized image point (nx, ny in 0..1).
-  void _animateToNormalized(double nx, double ny) {
+  /// Animates the viewer to center a normalized image point (nx, ny in 0..1)
+  /// at [scale].
+  void _animateToNormalized(double nx, double ny, {double scale = _kDetailScale}) {
+    final m = _matrixForNormalized(nx, ny, scale);
+    if (m != null) _animateToMatrix(m);
+  }
+
+  void _animateToMatrix(Matrix4 target) {
+    _focusTween = Matrix4Tween(begin: _transform.value, end: target).animate(
+      CurvedAnimation(parent: _focusAnim, curve: Curves.easeInOutCubic),
+    );
+    _focusAnim
+      ..reset()
+      ..forward();
+  }
+
+  /// Builds the transform that centers a normalized image point at [scale],
+  /// clamped so the content still covers the viewport. Returns null before the
+  /// first layout (viewport / image size unknown).
+  Matrix4? _matrixForNormalized(double nx, double ny, double scale) {
     final viewport = _viewport;
     final imageSize = _imageSize;
-    if (viewport == null || imageSize == null) return;
+    if (viewport == null || imageSize == null) return null;
     final vw = viewport.width;
     final vh = viewport.height;
 
@@ -182,27 +214,72 @@ class _MapBodyState extends ConsumerState<_MapBody>
       dy = (vh - h) / 2;
     }
 
-    const scale = 2.5;
     final cx = dx + nx * w;
     final cy = dy + ny * h;
-    // Center the point, then clamp so the content still covers the viewport.
     final tx = (vw / 2 - scale * cx).clamp(vw - scale * vw, 0.0).toDouble();
     final ty = (vh / 2 - scale * cy).clamp(vh - scale * vh, 0.0).toDouble();
     // viewport = scale * child + translation. Built directly to avoid the
     // deprecated Matrix4.translate/scale helpers.
-    final target = Matrix4.identity()
+    return Matrix4.identity()
       ..setEntry(0, 0, scale)
       ..setEntry(1, 1, scale)
       ..setEntry(0, 3, tx)
       ..setEntry(1, 3, ty);
-
-    _focusTween = Matrix4Tween(begin: _transform.value, end: target).animate(
-      CurvedAnimation(parent: _focusAnim, curve: Curves.easeInOutCubic),
-    );
-    _focusAnim
-      ..reset()
-      ..forward();
   }
+
+  /// Toggles the Overview ⇄ Detail zoom presets.
+  void _toggleOverview() {
+    final next = !_overview;
+    setState(() => _overview = next);
+    if (next) {
+      // Overview = identity transform → whole letterboxed board fits.
+      _animateToMatrix(Matrix4.identity());
+    } else {
+      final sel = _locFor(_selectedVenueKey);
+      if (sel != null) {
+        _animateToLocation(sel);
+      } else {
+        _animateToNormalized(0.4, 0.34); // re-center on the main camp
+      }
+    }
+  }
+
+  /// Selects a pin (opens its info sheet). If in Overview, drops to Detail and
+  /// centers on it.
+  void _selectVenue(VenueLocation loc) {
+    setState(() {
+      _selectedVenueKey = loc.key;
+      _overview = false;
+    });
+    _animateToLocation(loc);
+  }
+
+  /// Computes the now/next status line for a venue from the live schedule.
+  _VenueStatus? _statusFor(String key) {
+    final now = DateTime.now();
+    final events = ref
+        .read(scheduleRepositoryProvider)
+        .events
+        .where((e) => e.locationKey == key)
+        .toList();
+    Event? current;
+    Event? next;
+    for (final e in events) {
+      if (!e.startTime.isAfter(now) && e.endTime.isAfter(now)) {
+        current = e;
+      } else if (e.startTime.isAfter(now) &&
+          _sameDay(e.startTime, now) &&
+          (next == null || e.startTime.isBefore(next.startTime))) {
+        next = e;
+      }
+    }
+    if (current != null) return _VenueStatus.now(current.title);
+    if (next != null) return _VenueStatus.next(next.startTime, next.title);
+    return null;
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   Future<void> _onLocatePressed() async {
     if (_locationOn) {
@@ -211,6 +288,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
       if (pos == null) return;
       final p = MapGeoReference.instance.project(pos.latitude, pos.longitude);
       if (p != null) {
+        if (_overview) setState(() => _overview = false);
         _animateToNormalized(p.dx, p.dy);
       } else {
         _snack('You appear to be outside the venue map.');
@@ -226,6 +304,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
     setState(() {
       _locationOn = true;
       _pendingCenterOnLocation = true;
+      _awaitingFirstFix = true;
     });
   }
 
@@ -234,9 +313,6 @@ class _MapBodyState extends ConsumerState<_MapBody>
       SnackBar(content: Text(message)),
     );
   }
-
-  List<VenueLocation> get _activeLocations =>
-      _editing ? _draft : widget.locations;
 
   void _enterEdit() {
     setState(() {
@@ -322,10 +398,8 @@ class _MapBodyState extends ConsumerState<_MapBody>
   }
 
   void _onHotspotTapped(VenueLocation loc) {
-    if (!_editing) {
-      _showEventsForLocation(loc);
-      return;
-    }
+    // Editor-only: tap toggles which hotspot rect is selected for editing.
+    // In view mode, pins are tapped via [_selectVenue] (opens the info sheet).
     setState(() => _selectedKey =
         _selectedKey == loc.key ? null : loc.key);
   }
@@ -422,16 +496,6 @@ class _MapBodyState extends ConsumerState<_MapBody>
     return result == true;
   }
 
-  void _showEventsForLocation(VenueLocation loc) {
-    final all = ref.read(scheduleRepositoryProvider).events;
-    final atLoc = all.where((e) => e.locationKey == loc.key).toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => _LocationEventsSheet(location: loc, events: atLoc),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<MapFocusRequest?>(mapFocusProvider, (_, next) {
@@ -452,26 +516,39 @@ class _MapBodyState extends ConsumerState<_MapBody>
       final pos = ref.watch(currentPositionProvider).value;
       if (pos != null) {
         dotNorm = MapGeoReference.instance.project(pos.latitude, pos.longitude);
-        if (dotNorm != null && _pendingCenterOnLocation) {
-          _pendingCenterOnLocation = false;
-          final d = dotNorm;
+        if (dotNorm != null) {
+          _awaitingFirstFix = false;
+          if (_pendingCenterOnLocation) {
+            _pendingCenterOnLocation = false;
+            final d = dotNorm;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _animateToNormalized(d.dx, d.dy);
+            });
+          }
+        } else if (_awaitingFirstFix) {
+          // Got a fix, but it's beyond the map — they're not at the venue yet.
+          _awaitingFirstFix = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _animateToNormalized(d.dx, d.dy);
+            if (mounted) {
+              _snack(
+                'You\u2019re not at the venue yet — your location dot will '
+                'appear on the map once you arrive.',
+              );
+            }
           });
         }
       }
     }
 
+    // Selected pin + its live status drive the info sheet (view mode only).
+    final selectedLoc = _editing ? null : _locFor(_selectedVenueKey);
+    _VenueStatus? selectedStatus;
+    if (selectedLoc != null) {
+      ref.watch(scheduleRepositoryProvider); // rebuild when the schedule syncs
+      selectedStatus = _statusFor(selectedLoc.key);
+    }
+
     return Scaffold(
-      floatingActionButton: _editing
-          ? null
-          : FloatingActionButton.small(
-              onPressed: _onLocatePressed,
-              tooltip: 'My location',
-              child: Icon(
-                _locationOn ? Icons.my_location : Icons.location_searching,
-              ),
-            ),
       appBar: AppBar(
         title: Text(_editing ? 'Edit Hotspots' : 'Venue Map'),
         backgroundColor: _editing
@@ -520,114 +597,787 @@ class _MapBodyState extends ConsumerState<_MapBody>
                   ]
                 : null),
       ),
-      body: Column(
-        children: [
-          if (_editing) const _EditModeBanner(),
-          Expanded(
-            child: InteractiveViewer(
-              transformationController: _transform,
-              maxScale: 6,
-              minScale: 1.0,
-              panEnabled: !_editing || _selectedKey == null,
-              child: LayoutBuilder(builder: (context, constraints) {
-                final cw = constraints.maxWidth;
-                final ch = constraints.maxHeight;
-                _viewport = Size(cw, ch);
-                final containerRatio = cw / ch;
-
-                double w, h, dx, dy;
-                if (containerRatio > imageRatio) {
-                  h = ch;
-                  w = h * imageRatio;
-                  dx = (cw - w) / 2;
-                  dy = 0;
-                } else {
-                  w = cw;
-                  h = w / imageRatio;
-                  dx = 0;
-                  dy = (ch - h) / 2;
-                }
-
-                return Stack(children: [
+      body: SafeArea(
+        top: false,
+        child: _editing
+            ? Column(
+                children: [
+                  const _EditModeBanner(),
+                  Expanded(child: _buildEditorBoard(imageRatio)),
+                ],
+              )
+            : Stack(
+                children: [
+                  Positioned.fill(
+                      child: _buildViewerBoard(imageRatio, dotNorm)),
+                  // Controls: Overview/Detail pill + recenter FAB (top-right).
                   Positioned(
-                    left: dx,
-                    top: dy,
-                    width: w,
-                    height: h,
-                    child: const Image(image: _mapAsset, fit: BoxFit.fill),
+                    top: 12,
+                    right: 12,
+                    child: _MapControls(
+                      overview: _overview,
+                      locationOn: _locationOn,
+                      onToggleOverview: _toggleOverview,
+                      onLocate: _onLocatePressed,
+                    ),
                   ),
-                  for (final loc in _activeLocations)
-                    _HotspotWidget(
-                      location: loc,
-                      areaW: w,
-                      areaH: h,
-                      offsetX: dx,
-                      offsetY: dy,
-                      editing: _editing,
-                      selected: _editing && _selectedKey == loc.key,
-                      highlighted: !_editing && _highlightKey == loc.key,
-                      onTap: () => _onHotspotTapped(loc),
-                      onLongPress:
-                          _editing ? () => _editHotspot(loc) : null,
-                      onMove: _editing
-                          ? (mx, my) => _moveHotspot(loc, mx, my, w, h)
-                          : null,
-                      onResize: _editing
-                          ? (rx, ry) => _resizeHotspot(loc, rx, ry, w, h)
-                          : null,
-                    ),
-                  if (dotNorm != null)
+                  // Info sheet (bottom) when a pin is selected (Detail only).
+                  if (selectedLoc != null && !_overview)
                     Positioned(
-                      left: dx + dotNorm.dx * w - 12,
-                      top: dy + dotNorm.dy * h - 12,
-                      width: 24,
-                      height: 24,
-                      child: const IgnorePointer(child: _LocationDot()),
+                      left: 10,
+                      right: 10,
+                      bottom: 10,
+                      child: _VenueInfoSheet(
+                        location: selectedLoc,
+                        meta: venueMetaFor(selectedLoc.key),
+                        status: selectedStatus,
+                        onClose: () =>
+                            setState(() => _selectedVenueKey = null),
+                      ),
                     ),
-                ]);
-              }),
+                ],
+              ),
+      ),
+    );
+  }
+
+  void _captureLetterbox(double cw, double ch, double imageRatio) {
+    _viewport = Size(cw, ch);
+    final containerRatio = cw / ch;
+    if (containerRatio > imageRatio) {
+      _boardH = ch;
+      _boardW = _boardH * imageRatio;
+      _boardDx = (cw - _boardW) / 2;
+      _boardDy = 0;
+    } else {
+      _boardW = cw;
+      _boardH = _boardW / imageRatio;
+      _boardDx = 0;
+      _boardDy = (ch - _boardH) / 2;
+    }
+  }
+
+  /// Editor board: base image + draggable hotspot rectangles, all inside the
+  /// scaled InteractiveViewer (the debug calibration tool — unchanged design).
+  Widget _buildEditorBoard(double imageRatio) {
+    return InteractiveViewer(
+      transformationController: _transform,
+      maxScale: 6,
+      minScale: 1.0,
+      panEnabled: _selectedKey == null,
+      child: LayoutBuilder(builder: (context, constraints) {
+        _captureLetterbox(
+            constraints.maxWidth, constraints.maxHeight, imageRatio);
+        final w = _boardW, h = _boardH, dx = _boardDx, dy = _boardDy;
+        return Stack(clipBehavior: Clip.none, children: [
+          Positioned(
+            left: dx,
+            top: dy,
+            width: w,
+            height: h,
+            child: const Image(image: _mapAsset, fit: BoxFit.fill),
+          ),
+          for (final loc in _draft)
+            _HotspotWidget(
+              location: loc,
+              areaW: w,
+              areaH: h,
+              offsetX: dx,
+              offsetY: dy,
+              editing: true,
+              selected: _selectedKey == loc.key,
+              onTap: () => _onHotspotTapped(loc),
+              onLongPress: () => _editHotspot(loc),
+              onMove: (mx, my) => _moveHotspot(loc, mx, my, w, h),
+              onResize: (rx, ry) => _resizeHotspot(loc, rx, ry, w, h),
+            ),
+        ]);
+      }),
+    );
+  }
+
+  /// View board (Apple-Maps style): only the base image pans/zooms inside the
+  /// InteractiveViewer. Pins + labels live in a constant-size overlay that is
+  /// re-projected from the live transform, with greedy label de-confliction so
+  /// labels never stack on each other.
+  Widget _buildViewerBoard(double imageRatio, Offset? dotNorm) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final cw = constraints.maxWidth;
+      final ch = constraints.maxHeight;
+      _captureLetterbox(cw, ch, imageRatio);
+
+      if (!_didInitialFrame) {
+        _didInitialFrame = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final m = _matrixForNormalized(0.4, 0.34, _kDetailScale);
+          if (m != null) _transform.value = m;
+        });
+      }
+
+      return Stack(children: [
+        InteractiveViewer(
+          transformationController: _transform,
+          maxScale: 3,
+          minScale: 0.6,
+          child: SizedBox(
+            width: cw,
+            height: ch,
+            child: Stack(children: [
+              Positioned(
+                left: _boardDx,
+                top: _boardDy,
+                width: _boardW,
+                height: _boardH,
+                child: const Image(image: _mapAsset, fit: BoxFit.fill),
+              ),
+            ]),
+          ),
+        ),
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: _transform,
+            builder: (context, _) => _buildPinOverlay(cw, ch, dotNorm),
+          ),
+        ),
+      ]);
+    });
+  }
+
+  /// Projects a normalized image point (0..1) to a screen offset using the
+  /// current pan/zoom transform (pure scale + translate; no rotation).
+  Offset _project(double nx, double ny) {
+    final m = _transform.value.storage;
+    final scale = m[0];
+    final tx = m[12];
+    final ty = m[13];
+    final childX = _boardDx + nx * _boardW;
+    final childY = _boardDy + ny * _boardH;
+    return Offset(scale * childX + tx, scale * childY + ty);
+  }
+
+  static int _catRank(VenueCategory c) {
+    switch (c) {
+      case VenueCategory.stages:
+        return 0;
+      case VenueCategory.parties:
+        return 1;
+      case VenueCategory.gaming:
+        return 2;
+      case VenueCategory.stayEat:
+        return 3;
+      case VenueCategory.outdoors:
+        return 4;
+    }
+  }
+
+  Size _labelSize(String text) => _labelSizeCache.putIfAbsent(text, () {
+        final tp = TextPainter(
+          text: TextSpan(text: text, style: _kLabelTextStyle),
+          maxLines: 1,
+          textDirection: ui.TextDirection.ltr,
+        )..layout();
+        return Size(tp.width, tp.height);
+      });
+
+  Widget _buildPinOverlay(double cw, double ch, Offset? dotNorm) {
+    const margin = 64.0;
+
+    // Project + cull pins to those near the viewport.
+    final placements = <_PinPlacement>[];
+    for (final loc in widget.locations) {
+      final meta = venueMetaFor(loc.key);
+      final ncx = loc.rect.x + loc.rect.w / 2;
+      final ncy = loc.rect.y + loc.rect.h / 2;
+      final center = _project(ncx, ncy);
+      if (center.dx < -margin ||
+          center.dx > cw + margin ||
+          center.dy < -margin ||
+          center.dy > ch + margin) {
+        continue;
+      }
+      placements.add(_PinPlacement(
+        location: loc,
+        meta: meta,
+        color: categoryMetaFor(meta.category).color,
+        center: center,
+        labelLeft: ncx > 0.62,
+        selected: _selectedVenueKey == loc.key,
+      ));
+    }
+
+    // Reserve each pin's circle so labels don't cover other pins.
+    final circleRects = <Rect>[
+      for (final p in placements)
+        Rect.fromCircle(center: p.center, radius: (p.selected ? 17 : 14) + 2),
+    ];
+
+    // Greedy label placement: selected first (forced), then by category rank /
+    // walk time. A label shows only if it overlaps no placed label or other
+    // pin. Overview hides all labels (pins collapse to plain dots).
+    final visibleLabels = <String, Rect>{};
+    if (!_overview) {
+      final ordered = [...placements]..sort((a, b) {
+          if (a.selected != b.selected) return a.selected ? -1 : 1;
+          final r =
+              _catRank(a.meta.category).compareTo(_catRank(b.meta.category));
+          return r != 0 ? r : a.meta.walkMinutes.compareTo(b.meta.walkMinutes);
+        });
+      final placed = <Rect>[];
+      for (final p in ordered) {
+        final sz = _labelSize(p.location.displayName);
+        final chipW = sz.width + 16;
+        final chipH = sz.height + 8;
+        final rad = p.selected ? 17.0 : 14.0;
+        const gap = 5.0;
+        final left = p.labelLeft
+            ? p.center.dx - rad - gap - chipW
+            : p.center.dx + rad + gap;
+        final rect = Rect.fromLTWH(left, p.center.dy - chipH / 2, chipW, chipH);
+        if (rect.right < 0 || rect.left > cw) continue;
+
+        var collides = false;
+        if (!p.selected) {
+          for (final lr in placed) {
+            if (rect.overlaps(lr)) {
+              collides = true;
+              break;
+            }
+          }
+          if (!collides) {
+            for (var i = 0; i < placements.length; i++) {
+              if (placements[i].location.key != p.location.key &&
+                  rect.overlaps(circleRects[i])) {
+                collides = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!collides) {
+          visibleLabels[p.location.key] = rect;
+          placed.add(rect);
+        }
+      }
+    }
+
+    // Build widgets with selected pin/label raised to the top.
+    final lowerLabels = <Widget>[];
+    final lowerPins = <Widget>[];
+    Widget? selLabel;
+    Widget? selPin;
+    for (final p in placements) {
+      final pinWidget = Positioned(
+        left: p.center.dx - _PinIcon.hit / 2,
+        top: p.center.dy - _PinIcon.hit / 2,
+        child: _PinIcon(
+          color: p.color,
+          icon: p.meta.icon,
+          selected: p.selected,
+          onTap: () => _selectVenue(p.location),
+        ),
+      );
+      Widget? labelWidget;
+      final lr = visibleLabels[p.location.key];
+      if (lr != null) {
+        labelWidget = Positioned(
+          left: lr.left,
+          top: lr.top,
+          child: IgnorePointer(
+            child: _PinLabel(
+              text: p.location.displayName,
+              color: p.color,
+              selected: p.selected,
             ),
           ),
+        );
+      }
+      if (p.selected) {
+        selPin = pinWidget;
+        selLabel = labelWidget;
+      } else {
+        lowerPins.add(pinWidget);
+        if (labelWidget != null) lowerLabels.add(labelWidget);
+      }
+    }
+
+    final children = <Widget>[];
+    if (dotNorm != null) {
+      final c = _project(dotNorm.dx, dotNorm.dy);
+      if (c.dx >= -margin &&
+          c.dx <= cw + margin &&
+          c.dy >= -margin &&
+          c.dy <= ch + margin) {
+        children.add(Positioned(
+          left: c.dx - 20,
+          top: c.dy - 20,
+          width: 40,
+          height: 40,
+          child: const IgnorePointer(child: _LocationDot()),
+        ));
+      }
+    }
+    children
+      ..addAll(lowerLabels)
+      ..addAll(lowerPins);
+    if (selLabel != null) children.add(selLabel);
+    if (selPin != null) children.add(selPin);
+
+    return Stack(clipBehavior: Clip.none, children: children);
+  }
+}
+
+/// The blue "you are here" marker: a 15px filled dot with a white ring and a
+/// pulsing translucent-blue halo (2s ease-out, infinite). The pulse is gated
+/// behind reduced-motion (`MediaQuery.disableAnimations`).
+class _LocationDot extends StatefulWidget {
+  const _LocationDot();
+
+  @override
+  State<_LocationDot> createState() => _LocationDotState();
+}
+
+class _LocationDotState extends State<_LocationDot>
+    with SingleTickerProviderStateMixin {
+  static const _blue = Color(0xFF2B6CB0);
+
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  );
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (!reduceMotion && !_pulse.isAnimating) {
+      _pulse.repeat();
+    } else if (reduceMotion && _pulse.isAnimating) {
+      _pulse.stop();
+    }
+
+    final dot = Container(
+      width: 15,
+      height: 15,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _blue,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+    );
+
+    if (reduceMotion) {
+      return Center(child: dot);
+    }
+
+    return Center(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (context, _) {
+              final t = Curves.easeOut.transform(_pulse.value);
+              return Container(
+                width: 15 + 25 * t,
+                height: 15 + 25 * t,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _blue.withValues(alpha: 0.30 * (1 - t)),
+                ),
+              );
+            },
+          ),
+          dot,
         ],
       ),
     );
   }
 }
 
-/// The blue "you are here" marker: a filled dot with a white ring and a soft
-/// translucent halo, à la map apps.
-class _LocationDot extends StatelessWidget {
-  const _LocationDot();
+/// Status line for a venue's info sheet, derived from the live schedule.
+class _VenueStatus {
+  final bool isNow;
+  final DateTime? time; // start time when [isNow] is false
+  final String title;
+  const _VenueStatus.now(this.title)
+      : isNow = true,
+        time = null;
+  const _VenueStatus.next(this.time, this.title) : isNow = false;
+}
+
+/// Resolved on-screen placement for one venue pin in the overlay.
+class _PinPlacement {
+  final VenueLocation location;
+  final VenueMeta meta;
+  final Color color;
+  final Offset center; // screen-space pin center
+  final bool labelLeft;
+  final bool selected;
+  const _PinPlacement({
+    required this.location,
+    required this.meta,
+    required this.color,
+    required this.center,
+    required this.labelLeft,
+    required this.selected,
+  });
+}
+
+/// A category pin icon: a colored circle holding a white glyph. Constant
+/// screen size (does not scale with map zoom); selected pins enlarge. The
+/// label is rendered separately by the overlay so it can be de-conflicted.
+class _PinIcon extends StatelessWidget {
+  static const double hit = 44; // ≥44pt tap target (iOS HIG / small Android)
+
+  final Color color;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PinIcon({
+    required this.color,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    const blue = Color(0xFF1A73E8);
-    return Center(
-      child: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: blue.withValues(alpha: 0.18),
-        ),
+    final circle = selected ? 34.0 : 28.0;
+    final iconSize = selected ? 19.0 : 16.0;
+    final borderWidth = selected ? 3.0 : 2.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: hit,
+        height: hit,
         child: Center(
           child: Container(
-            width: 14,
-            height: 14,
+            width: circle,
+            height: circle,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: blue,
-              border: Border.all(color: Colors.white, width: 2.5),
+              color: color,
+              border: Border.all(color: Colors.white, width: borderWidth),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 3,
+                  color: const Color(0x593A2818), // rgba(58,40,24,0.35)
+                  blurRadius: selected ? 8 : 3,
+                  offset: Offset(0, selected ? 3 : 1),
                 ),
               ],
             ),
+            child: Icon(icon, size: iconSize, color: Colors.white),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Shared text style for pin labels — also used to measure label widths for
+/// collision so the rendered chip matches the reserved rect.
+const TextStyle _kLabelTextStyle =
+    TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800);
+
+class _PinLabel extends StatelessWidget {
+  final String text;
+  final Color color;
+  final bool selected;
+  const _PinLabel({
+    required this.text,
+    required this.color,
+    required this.selected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: selected ? Colors.white : const Color(0x668E7E63),
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1F3A2818), blurRadius: 2),
+        ],
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+        style: _kLabelTextStyle.copyWith(
+          color: selected ? Colors.white : PocColors.ink,
+        ),
+      ),
+    );
+  }
+}
+
+/// Top-right stacked controls: the Overview/Detail pill and a forest circular
+/// recenter FAB.
+class _MapControls extends StatelessWidget {
+  final bool overview;
+  final bool locationOn;
+  final VoidCallback onToggleOverview;
+  final VoidCallback onLocate;
+
+  const _MapControls({
+    required this.overview,
+    required this.locationOn,
+    required this.onToggleOverview,
+    required this.onLocate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          elevation: 3,
+          shadowColor: const Color(0x593A2818),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: onToggleOverview,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    overview ? Icons.zoom_in : Icons.zoom_out_map,
+                    size: 16,
+                    color: PocColors.saddleDark,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    overview ? 'Detail' : 'Overview',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: PocColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Material(
+          color: PocColors.forest,
+          shape: const CircleBorder(),
+          elevation: 3,
+          shadowColor: const Color(0x593A2818),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onLocate,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(
+                locationOn ? Icons.my_location : Icons.location_searching,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bottom info card for the selected pin: identity row (icon · name · blurb ·
+/// walk time), a divider, then the now/next status line.
+class _VenueInfoSheet extends StatelessWidget {
+  final VenueLocation location;
+  final VenueMeta meta;
+  final _VenueStatus? status;
+  final VoidCallback onClose;
+
+  const _VenueInfoSheet({
+    required this.location,
+    required this.meta,
+    required this.status,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cat = categoryMetaFor(meta.category);
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 6,
+      shadowColor: const Color(0x593A2818),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFC8B996)),
+        ),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: cat.color,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(meta.icon, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        location.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: PocColors.ink,
+                        ),
+                      ),
+                      Text(
+                        meta.blurb,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: PocColors.inkSoft,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.directions_walk,
+                        size: 17, color: PocColors.forestDark),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${meta.walkMinutes}m',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: PocColors.forestDark,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  color: PocColors.inkSoft,
+                  tooltip: 'Close',
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFD8CBA8)),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _StatusLine(status: status),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusLine extends StatelessWidget {
+  final _VenueStatus? status;
+  const _StatusLine({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = status;
+    if (s == null) {
+      return const Text(
+        'Open all weekend',
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          color: PocColors.inkSoft,
+        ),
+      );
+    }
+    final label = s.isNow
+        ? 'Now: ${s.title}'
+        : '${DateFormat('h:mm a').format(s.time!)} · ${s.title}';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (s.isNow)
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: PocColors.forest,
+              boxShadow: [
+                BoxShadow(
+                  color: PocColors.forest.withValues(alpha: 0.18),
+                  blurRadius: 0,
+                  spreadRadius: 3,
+                ),
+              ],
+            ),
+          )
+        else
+          const Icon(Icons.schedule, size: 14, color: PocColors.saddleDark),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: s.isNow ? PocColors.forestDark : PocColors.inkSoft,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -663,7 +1413,6 @@ class _HotspotWidget extends StatelessWidget {
   final double offsetY;
   final bool editing;
   final bool selected;
-  final bool highlighted;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final void Function(double dx, double dy)? onMove;
@@ -677,7 +1426,6 @@ class _HotspotWidget extends StatelessWidget {
     required this.offsetY,
     required this.editing,
     required this.selected,
-    this.highlighted = false,
     required this.onTap,
     this.onLongPress,
     this.onMove,
@@ -692,19 +1440,12 @@ class _HotspotWidget extends StatelessWidget {
     final width = location.rect.w * areaW;
     final height = location.rect.h * areaH;
 
-    final fill = editing
-        ? (selected
-            ? scheme.tertiary.withValues(alpha: 0.45)
-            : scheme.tertiary.withValues(alpha: 0.22))
-        : (highlighted
-            ? scheme.primary.withValues(alpha: 0.40)
-            : const Color(0xFF2D5E3E).withValues(alpha: 0.22));
-    final border = editing
-        ? (selected ? scheme.tertiary : scheme.tertiary.withValues(alpha: 0.7))
-        : (highlighted
-            ? scheme.primary
-            : const Color(0xFF2D5E3E).withValues(alpha: 0.85));
-    final borderWidth = (selected || highlighted) ? 3.0 : 2.0;
+    final fill = selected
+        ? scheme.tertiary.withValues(alpha: 0.45)
+        : scheme.tertiary.withValues(alpha: 0.22);
+    final border =
+        selected ? scheme.tertiary : scheme.tertiary.withValues(alpha: 0.7);
+    final borderWidth = selected ? 3.0 : 2.0;
 
     return Positioned(
       left: left,
@@ -956,46 +1697,6 @@ class _NameDialogState extends State<_NameDialog> {
           child: const Text('Add'),
         ),
       ],
-    );
-  }
-}
-
-class _LocationEventsSheet extends StatelessWidget {
-  final VenueLocation location;
-  final List<Event> events;
-  const _LocationEventsSheet({required this.location, required this.events});
-
-  @override
-  Widget build(BuildContext context) {
-    final fmt = DateFormat('EEE h:mm a');
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(location.displayName,
-                style: Theme.of(context).textTheme.titleLarge),
-          ),
-          if (events.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: Text('No events scheduled here yet.'),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: events.length,
-                separatorBuilder: (ctx, i) => const Divider(height: 1),
-                itemBuilder: (_, i) => ListTile(
-                  title: Text(events[i].title),
-                  subtitle: Text(fmt.format(events[i].startTime)),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }
