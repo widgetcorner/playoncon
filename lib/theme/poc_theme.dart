@@ -65,6 +65,14 @@ class PocTheme {
           letterSpacing: 0.4,
         ),
       ),
+      tabBarTheme: TabBarThemeData(
+        // TabBars live in the green AppBar; default M3 colors render the
+        // selected label in colorScheme.primary (forest), which vanishes
+        // against the matching background. Use the AppBar's cream foreground.
+        labelColor: PocColors.cream,
+        unselectedLabelColor: PocColors.cream.withValues(alpha: 0.6),
+        indicatorColor: PocColors.cream,
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: PocColors.cream,
         indicatorColor: PocColors.forest.withValues(alpha: 0.18),

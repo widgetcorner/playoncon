@@ -1,21 +1,202 @@
 [
-  {"key": "cafeteria",        "displayName": "Cafeteria (Guthrie Lodge)",        "rect": {"x": 0.13, "y": 0.34, "w": 0.06, "h": 0.06}},
-  {"key": "hotel-rooms",      "displayName": "Hotel Rooms",                       "rect": {"x": 0.24, "y": 0.21, "w": 0.06, "h": 0.06}},
-  {"key": "gaming",           "displayName": "Gaming (Environmental Science)",    "rect": {"x": 0.06, "y": 0.49, "w": 0.06, "h": 0.06}},
-  {"key": "theater",          "displayName": "Theater (Programming)",             "rect": {"x": 0.24, "y": 0.30, "w": 0.06, "h": 0.06}},
-  {"key": "mayfield",         "displayName": "Mayfield",                          "rect": {"x": 0.40, "y": 0.50, "w": 0.06, "h": 0.06}},
-  {"key": "morrison-dorm",    "displayName": "Morrison Dorm",                     "rect": {"x": 0.27, "y": 0.39, "w": 0.06, "h": 0.06}},
-  {"key": "alfa-dorm",        "displayName": "Alfa Dorm",                         "rect": {"x": 0.33, "y": 0.49, "w": 0.06, "h": 0.06}},
-  {"key": "pool",             "displayName": "Pool",                              "rect": {"x": 0.39, "y": 0.39, "w": 0.06, "h": 0.06}},
-  {"key": "sand-volleyball",  "displayName": "Sand Volleyball",                   "rect": {"x": 0.59, "y": 0.40, "w": 0.06, "h": 0.06}},
-  {"key": "archery",          "displayName": "Archery",                           "rect": {"x": 0.62, "y": 0.31, "w": 0.06, "h": 0.06}},
-  {"key": "mini-golf",        "displayName": "Mini Golf Course",                  "rect": {"x": 0.55, "y": 0.51, "w": 0.06, "h": 0.06}},
-  {"key": "recreation-field", "displayName": "Recreation Field",                  "rect": {"x": 0.55, "y": 0.39, "w": 0.06, "h": 0.06}},
-  {"key": "dock-canoes",      "displayName": "Dock & Canoes",                     "rect": {"x": 0.46, "y": 0.22, "w": 0.06, "h": 0.06}},
-  {"key": "fire-pit",         "displayName": "Fire Pit",                          "rect": {"x": 0.32, "y": 0.10, "w": 0.06, "h": 0.06}},
-  {"key": "chapel",           "displayName": "Chapel",                            "rect": {"x": 0.32, "y": 0.62, "w": 0.06, "h": 0.06}},
-  {"key": "cottages",         "displayName": "Cottages",                          "rect": {"x": 0.40, "y": 0.71, "w": 0.06, "h": 0.06}},
-  {"key": "climbing-wall",    "displayName": "Climbing Wall",                     "rect": {"x": 0.62, "y": 0.55, "w": 0.06, "h": 0.06}},
-  {"key": "picnic-tables",    "displayName": "Picnic Tables, Canopy & Lower Mayfield", "rect": {"x": 0.45, "y": 0.46, "w": 0.06, "h": 0.06}},
-  {"key": "food-truck",       "displayName": "Food Truck",                        "rect": {"x": 0.16, "y": 0.56, "w": 0.06, "h": 0.06}}
+  {
+    "key": "cafeteria",
+    "displayName": "Lodge",
+    "rect": {
+      "x": 0.14691729948695145,
+      "y": 0.3032093162419946,
+      "w": 0.08769942281311312,
+      "h": 0.05907891482392205
+    }
+  },
+  {
+    "key": "hotel-rooms",
+    "displayName": "Hotel Rooms",
+    "rect": {
+      "x": 0.2249045635347203,
+      "y": 0.1850228385496107,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "gaming",
+    "displayName": "Main Gaming",
+    "aliases": [
+      "RPG Rooms (Gaming Building)",
+      "Video Gaming (Gaming Building Classroom 2)",
+      "RPG Room 1",
+      "RPG Room 2",
+      "Video Gaming"
+    ],
+    "rect": {
+      "x": 0.07050316382850423,
+      "y": 0.4343321206933813,
+      "w": 0.06426144966355588,
+      "h": 0.0790357603056155
+    }
+  },
+  {
+    "key": "theater",
+    "displayName": "Theater",
+    "rect": {
+      "x": 0.279039921892965,
+      "y": 0.2513957939343771,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "mayfield",
+    "displayName": "Lower Mayfield",
+    "rect": {
+      "x": 0.39785073881649513,
+      "y": 0.4563323843850246,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "morrison-dorm",
+    "displayName": "Morrison Dorm",
+    "rect": {
+      "x": 0.28093117813003043,
+      "y": 0.3484839073189473,
+      "w": 0.03234074395505721,
+      "h": 0.08434158945720811
+    }
+  },
+  {
+    "key": "alfa-dorm",
+    "displayName": "Alfa Dorm",
+    "rect": {
+      "x": 0.3269157528964816,
+      "y": 0.4306068874574734,
+      "w": 0.05924242424242423,
+      "h": 0.04608166054094794
+    }
+  },
+  {
+    "key": "pool",
+    "displayName": "Pool",
+    "rect": {
+      "x": 0.3956959250996296,
+      "y": 0.34639970182430896,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "sand-volleyball",
+    "displayName": "Sand Volleyball",
+    "rect": {
+      "x": 0.6264705116849111,
+      "y": 0.3524639136878575,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "archery",
+    "displayName": "Archery",
+    "rect": {
+      "x": 0.6514922036603247,
+      "y": 0.3039244742417973,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "mini-golf",
+    "displayName": "Mini Golf Course",
+    "aliases": ["Mini Golf", "Mini-golf"],
+    "rect": {
+      "x": 0.5679537802712152,
+      "y": 0.41138722933206134,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "recreation-field",
+    "displayName": "Recreation Field",
+    "aliases": ["Rec Field"],
+    "rect": {
+      "x": 0.5704455898839639,
+      "y": 0.3235928040463533,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "dock-canoes",
+    "displayName": "Dock & Canoes",
+    "rect": {
+      "x": 0.46,
+      "y": 0.22,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "fire-pit",
+    "displayName": "Fire Pit",
+    "rect": {
+      "x": 0.32,
+      "y": 0.1,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "chapel",
+    "displayName": "Chapel",
+    "rect": {
+      "x": 0.29454753753094365,
+      "y": 0.5287866132516659,
+      "w": 0.0373105545325494,
+      "h": 0.061038236160928
+    }
+  },
+  {
+    "key": "cottages",
+    "displayName": "Cottages",
+    "rect": {
+      "x": 0.35002308773717283,
+      "y": 0.6156753930596661,
+      "w": 0.10027777777777741,
+      "h": 0.04526293469041558
+    }
+  },
+  {
+    "key": "climbing-wall",
+    "displayName": "Climbing Wall",
+    "rect": {
+      "x": 0.5733553747855675,
+      "y": 0.566892002382934,
+      "w": 0.06,
+      "h": 0.06
+    }
+  },
+  {
+    "key": "picnic-tables",
+    "displayName": "Picnic Tables, Canopy & Lower Mayfield",
+    "aliases": ["Canopy"],
+    "rect": {
+      "x": 0.4362521860910696,
+      "y": 0.3971389404472566,
+      "w": 0.03760665363287547,
+      "h": 0.059264782929207685
+    }
+  },
+  {
+    "key": "food-truck",
+    "displayName": "Food Truck",
+    "rect": {
+      "x": 0.12410515540967143,
+      "y": 0.51388037367267,
+      "w": 0.06,
+      "h": 0.06
+    }
+  }
 ]

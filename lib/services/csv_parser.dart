@@ -18,14 +18,29 @@ import '../models/venue_location.dart';
 /// Day-of-week rows reset the date; time rows in column 0 set the start time;
 /// every non-empty cell at a venue column becomes one [Event].
 class CsvScheduleParser {
-  final Map<String, VenueLocation> _locationsByName;
+  /// Column-header → pin. Keyed by lowercased displayName and each alias.
+  final Map<String, VenueLocation> _byHeader;
+
+  /// Normalized name → pin, for matching in-title location hints
+  /// (e.g. "(Rec Field)"). Keyed by [_normalizeHint] of displayName + aliases.
+  final Map<String, VenueLocation> _byHint;
+
   final DateTime? _eventThursday;
 
   CsvScheduleParser(
     List<VenueLocation> locations, {
     DateTime? eventThursday,
-  })  : _locationsByName = {
-          for (final loc in locations) loc.displayName.toLowerCase(): loc,
+  })  : _byHeader = {
+          for (final loc in locations) ...{
+            loc.displayName.toLowerCase(): loc,
+            for (final a in loc.aliases) a.toLowerCase(): loc,
+          },
+        },
+        _byHint = {
+          for (final loc in locations) ...{
+            _normalizeHint(loc.displayName): loc,
+            for (final a in loc.aliases) _normalizeHint(a): loc,
+          },
         },
         _eventThursday = eventThursday == null
             ? null
@@ -121,7 +136,7 @@ class CsvScheduleParser {
           events[prevIdx] = _withEnd(prev, start);
         }
 
-        final locKey = _locationsByName[venue.toLowerCase()]?.key;
+        final locKey = _resolveLocation(venue, rawCell)?.key;
         events.add(Event(
           id: _stableId(title, start, venue),
           title: title,
@@ -138,6 +153,35 @@ class CsvScheduleParser {
     }
 
     return events;
+  }
+
+  /// Resolves a cell to a pin: first by exact column header, then — when the
+  /// header is a broad category with no pin of its own (e.g. "Outdoors") — by
+  /// a location hint parenthesized in the title, like "Beer Croquet (Rec Field)".
+  VenueLocation? _resolveLocation(String header, String rawCell) {
+    final direct = _byHeader[header.toLowerCase()];
+    if (direct != null) return direct;
+    for (final hint in _extractHints(rawCell)) {
+      final match = _byHint[hint];
+      if (match != null) return match;
+    }
+    return null;
+  }
+
+  /// Lowercases and collapses punctuation to single spaces so "Rec Field",
+  /// "rec field", and "Rec-Field" all compare equal.
+  static String _normalizeHint(String s) =>
+      s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+
+  static final RegExp _hintRe = RegExp(r'\(([^)]+)\)');
+
+  /// Normalized location hints parenthesized in a title, e.g.
+  /// "Pokeball Hunt (Mini-golf)" → ["mini golf"].
+  static Iterable<String> _extractHints(String cell) sync* {
+    for (final m in _hintRe.allMatches(cell)) {
+      final h = _normalizeHint(m.group(1)!);
+      if (h.isNotEmpty) yield h;
+    }
   }
 
   int _findVenueHeaderRow(List<List<dynamic>> rows) {

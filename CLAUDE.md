@@ -13,6 +13,8 @@ the why behind major decisions).
 - `http` + `csv` for sheet ingest, `path_provider` for cache, `connectivity_plus` for
   online/offline, `url_launcher` for Discord, `intl` for dates
 - `onesignal_flutter` for push (M2)
+- `flutter_local_notifications` + `timezone` + `flutter_timezone` for on-device event reminders
+- `scrollable_positioned_list` so "All Sessions" can open scrolled to the current time
 - No backend — a Google Sheet published as CSV is the only data source
 
 ## File layout (key paths)
@@ -24,15 +26,19 @@ lib/
   models/
     event.dart                        Event data class + JSON codec
     event_attribute.dart              [TAG] code → label/icon registry
-    venue_location.dart               Hotspot data class + copyWith
+    venue_location.dart               Hotspot data class + copyWith + aliases
   services/
     csv_parser.dart                   grid CSV walker (see "Sheet format")
     schedule_repository.dart          fetch/cache/expose events (StateNotifier)
     locations_store.dart              hotspot read/write + venueLocationsProvider
+    saved_events_store.dart           "My Schedule": event ID → ReminderOption (persisted)
+    notification_service.dart         local reminder scheduling (flutter_local_notifications)
     network_monitor.dart              connectivity stream
+  app_navigation.dart                 selectedTab + mapFocus providers ("Show on map")
   features/
-    schedule/  schedule_page, event_detail_page, attribute_pill
-    map/       venue_map_page (with debug-only hotspot editor)
+    schedule/  schedule_page (All Sessions / My Schedule tabs), event_detail_page,
+               attribute_pill, save_event_action (save + reminder dialog)
+    map/       venue_map_page (debug-only hotspot editor; "Show on map" focus+highlight)
     info/      info_page (Discord, last-sync, refresh)
 assets/
   images/venue-map.png                annotated venue diagram
@@ -125,13 +131,57 @@ the override over the bundled asset.
 **Workflow when calibration is done:** Copy JSON → paste into `assets/data/locations.json`
 → Reset to clear the override → ship.
 
+## Event-to-hotspot matching
+
+The schedule's venue **columns** (programming areas: `Theater`, `Main Gaming`, `RPG Room 1`,
+`Outdoors`, `Lodge`, `Lower Mayfield`, …) are matched to map **hotspots** in two passes
+(`CsvScheduleParser._resolveLocation`):
+
+1. **Header match** — the column header is looked up against each hotspot's
+   `displayName.toLowerCase()` *and* its `aliases`. So a hotspot answers to the sheet's
+   exact column text, and **multiple columns can fan into one pin via aliases**. The
+   `gaming` pin (`Main Gaming`) does this: its `aliases` claim the whole Gaming building —
+   `RPG Rooms (Gaming Building)`, `Video Gaming (Gaming Building Classroom 2)`, `RPG Room 1`,
+   `RPG Room 2`, `Video Gaming` — so tapping it lists every event from all six columns.
+   (Events still carry their own `locationDisplayName` = the exact column, so the schedule
+   list and event detail show the specific room.)
+2. **Title-hint fallback** — only when the header has no pin (currently just `Outdoors`,
+   which is a broad category, not a place). The parser reads a parenthesized location hint
+   in the event title and matches it via `aliases`/`displayName`, normalized
+   (lowercased, punctuation→spaces). E.g. `Beer Croquet (Rec Field)` → `recreation-field`,
+   `(Mini-golf)` → `mini-golf`, `(Canopy)` → `picnic-tables`. Outdoors events with no hint
+   stay map-unmatched but still appear in the schedule list.
+
+`aliases` lives in `assets/data/locations.json` (optional `"aliases": [...]` per pin), **not
+in code** — add a column header or hint variant there, no rebuild of parser logic needed.
+
+Pins with no column (dorms, archery, pool amenities, etc.) are wayfinding-only.
+
 ## Constraints / things to know
 
-- Event-to-hotspot matching is by **`displayName.toLowerCase()`** (parser side) against the
-  sheet's venue header text. Renaming a hotspot's `displayName` to something the sheet
-  doesn't say will orphan its events from the map until renamed back or sheet edited.
+- A column resolves to exactly **one** pin, but several columns may share a pin via `aliases`
+  (the Gaming building does this). `Outdoors` is the per-event exception, spread across real
+  pins via the title-hint fallback above. Renaming a `displayName`/`alias` away from what the
+  sheet says (header or hint) orphans those events from the map.
 - The cache file (`<appDocs>/schedule_cache.json`) and the fallback bundled JSON store
   events with the `attributes` field; old caches without it default to `[]`.
+- "My Schedule" lives in `<appDocs>/saved_events.json` (`savedEventsProvider`) as a map of
+  event ID → `ReminderOption` (`none`/`atStart`/`fifteenMinutesBefore`). IDs are the parser's
+  `title|start|location` hash, so a save survives re-sync unless the sheet cell
+  text/time/venue changes — then it silently drops (acceptable for a con app). Saving prompts
+  a reminder dialog (`save_event_action.dart`); choosing a non-none option requests
+  notification permission then schedules via `NotificationService`.
+- "All Sessions" is a `ScrollablePositionedList` that opens at `_nowAnchorIndex` — the first
+  session whose end is after `DateTime.now()` (its day header if it's first of the day),
+  falling back to the top when the schedule is entirely past/not-yet-started. Applied once on
+  first build with data, so a later sync won't yank the user's scroll position.
+- Reminders are **local** notifications (device alarm), not OneSignal push. Event times are
+  naive wall-clock `DateTime`s, scheduled against the device's local timezone. **Past
+  fire-times are skipped** — the 2025 test schedule won't buzz; only future-dated events do.
+- Reminders need native config already wired: Android core-library desugaring + manifest
+  permissions/receivers (`android/app/build.gradle.kts`, `AndroidManifest.xml`) and the iOS
+  `UNUserNotificationCenter` delegate (`AppDelegate.swift`). Changing notification deps means
+  a full rebuild (`flutter run`), not hot reload.
 - `--dart-define` values bake at build time. Changing one requires a fresh `flutter run`,
   not a hot-reload.
 

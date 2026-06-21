@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_navigation.dart';
 import 'features/info/info_page.dart';
 import 'features/map/venue_map_page.dart';
 import 'features/schedule/schedule_page.dart';
@@ -27,8 +28,6 @@ class RootShell extends ConsumerStatefulWidget {
 }
 
 class _RootShellState extends ConsumerState<RootShell> {
-  int _index = 0;
-
   static const _pages = [
     SchedulePage(),
     VenueMapPage(),
@@ -37,11 +36,13 @@ class _RootShellState extends ConsumerState<RootShell> {
 
   @override
   Widget build(BuildContext context) {
+    final index = ref.watch(selectedTabProvider);
     return Scaffold(
-      body: IndexedStack(index: _index, children: _pages),
+      body: IndexedStack(index: index, children: _pages),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        selectedIndex: index,
+        onDestinationSelected: (i) =>
+            ref.read(selectedTabProvider.notifier).state = i,
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.calendar_month), label: 'Schedule'),

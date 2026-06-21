@@ -94,4 +94,83 @@ void main() {
     final aud = byTitle['Auditions!']!;
     expect(aud.attributes, ['A']);
   });
+
+  test('Outdoors events resolve to a pin via the (Location) title hint', () {
+    const rect = NormalizedRect(x: 0, y: 0, w: 0.05, h: 0.05);
+    final locations = [
+      VenueLocation(key: 'theater', displayName: 'Theater', rect: rect),
+      VenueLocation(
+        key: 'recreation-field',
+        displayName: 'Recreation Field',
+        aliases: const ['Rec Field'],
+        rect: rect,
+      ),
+      VenueLocation(
+        key: 'mini-golf',
+        displayName: 'Mini Golf Course',
+        aliases: const ['Mini Golf', 'Mini-golf'],
+        rect: rect,
+      ),
+      VenueLocation(
+        key: 'picnic-tables',
+        displayName: 'Picnic Tables, Canopy & Lower Mayfield',
+        aliases: const ['Canopy'],
+        rect: rect,
+      ),
+    ];
+
+    final csv = [
+      ',Theater,Outdoors\r\n',
+      'Thursday,,\r\n',
+      'Noon,Quiz Bowl,Cooler Yacht-Zee (Rec Field)\r\n',
+      '1 PM,,Pokeball Hunt (Mini-golf)\r\n',
+      '2 PM,,Color Wars (Canopy)\r\n',
+      '3 PM,,Nature Run / Walk\r\n',
+    ].join();
+
+    final parser =
+        CsvScheduleParser(locations, eventThursday: DateTime(2025, 7, 3));
+    final byTitle = {for (final e in parser.parse(csv)) e.title: e};
+
+    // Header resolves directly.
+    expect(byTitle['Quiz Bowl']!.locationKey, 'theater');
+    // "Outdoors" has no pin → resolve by the parenthetical hint.
+    expect(byTitle['Cooler Yacht-Zee (Rec Field)']!.locationKey,
+        'recreation-field');
+    expect(byTitle['Pokeball Hunt (Mini-golf)']!.locationKey, 'mini-golf');
+    expect(byTitle['Color Wars (Canopy)']!.locationKey, 'picnic-tables');
+    // No hint, no matching header → unmatched (still listed in the schedule).
+    expect(byTitle['Nature Run / Walk']!.locationKey, isNull);
+  });
+
+  test('sibling columns fan into one pin via aliases', () {
+    const rect = NormalizedRect(x: 0, y: 0, w: 0.05, h: 0.05);
+    final locations = [
+      VenueLocation(
+        key: 'gaming',
+        displayName: 'Main Gaming',
+        aliases: const ['RPG Room 1', 'Video Gaming'],
+        rect: rect,
+      ),
+    ];
+    final csv = [
+      ',Theater,Main Gaming,RPG Room 1,Video Gaming\r\n',
+      'Thursday,,,,\r\n',
+      'Noon,Quiz Bowl,Open Gaming,Blood on the Clocktower,DJ Hero Tourney\r\n',
+    ].join();
+
+    final parser =
+        CsvScheduleParser(locations, eventThursday: DateTime(2025, 7, 3));
+    final byTitle = {for (final e in parser.parse(csv)) e.title: e};
+
+    // All three gaming columns resolve to the single 'gaming' pin...
+    expect(byTitle['Open Gaming']!.locationKey, 'gaming');
+    expect(byTitle['Blood on the Clocktower']!.locationKey, 'gaming');
+    expect(byTitle['DJ Hero Tourney']!.locationKey, 'gaming');
+    // ...while each event keeps its own column label for the schedule/detail.
+    expect(byTitle['Blood on the Clocktower']!.locationDisplayName, 'RPG Room 1');
+    expect(byTitle['DJ Hero Tourney']!.locationDisplayName, 'Video Gaming');
+    // No pin for Theater here → unmatched.
+    expect(byTitle['Quiz Bowl']!.locationKey, isNull);
+  });
 }

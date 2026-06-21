@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../app_navigation.dart';
 import '../../models/event.dart';
 import '../../models/venue_location.dart';
 import '../../services/locations_store.dart';
@@ -42,7 +45,8 @@ class _MapBody extends ConsumerStatefulWidget {
   ConsumerState<_MapBody> createState() => _MapBodyState();
 }
 
-class _MapBodyState extends ConsumerState<_MapBody> {
+class _MapBodyState extends ConsumerState<_MapBody>
+    with SingleTickerProviderStateMixin {
   Size? _imageSize;
   ImageStream? _stream;
   ImageStreamListener? _listener;
@@ -51,10 +55,25 @@ class _MapBodyState extends ConsumerState<_MapBody> {
   late List<VenueLocation> _draft;
   String? _selectedKey;
 
+  // "Show on map" deep-link support.
+  final TransformationController _transform = TransformationController();
+  late final AnimationController _focusAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+  );
+  Animation<Matrix4>? _focusTween;
+  Size? _viewport;
+  String? _highlightKey;
+  Timer? _highlightTimer;
+
   @override
   void initState() {
     super.initState();
     _draft = List.of(widget.locations);
+    _focusAnim.addListener(() {
+      final t = _focusTween;
+      if (t != null) _transform.value = t.value;
+    });
     _stream = _mapAsset.resolve(ImageConfiguration.empty);
     _listener = ImageStreamListener((info, _) {
       if (!mounted) return;
@@ -79,7 +98,81 @@ class _MapBodyState extends ConsumerState<_MapBody> {
     if (_stream != null && _listener != null) {
       _stream!.removeListener(_listener!);
     }
+    _highlightTimer?.cancel();
+    _focusAnim.dispose();
+    _transform.dispose();
     super.dispose();
+  }
+
+  /// Handles a "Show on map" request: pan/zoom to the hotspot and pulse a
+  /// highlight on it. No-op (silently) if the key isn't a known pin.
+  void _focusOnHotspot(String key) {
+    // Consume the request so the same hotspot can be re-targeted later.
+    ref.read(mapFocusProvider.notifier).state = null;
+    if (_editing) return;
+    VenueLocation? loc;
+    for (final l in widget.locations) {
+      if (l.key == key) {
+        loc = l;
+        break;
+      }
+    }
+    if (loc == null) return;
+    final target = loc;
+    _highlightTimer?.cancel();
+    setState(() => _highlightKey = key);
+    _highlightTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _highlightKey = null);
+    });
+    // Wait a frame so the Map tab has laid out (it may have been off-screen).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _animateTo(target);
+    });
+  }
+
+  void _animateTo(VenueLocation loc) {
+    final viewport = _viewport;
+    final imageSize = _imageSize;
+    if (viewport == null || imageSize == null) return;
+    final vw = viewport.width;
+    final vh = viewport.height;
+
+    // Recompute the letterboxed image rect (same math as the build method).
+    final imageRatio = imageSize.width / imageSize.height;
+    final containerRatio = vw / vh;
+    double w, h, dx, dy;
+    if (containerRatio > imageRatio) {
+      h = vh;
+      w = h * imageRatio;
+      dx = (vw - w) / 2;
+      dy = 0;
+    } else {
+      w = vw;
+      h = w / imageRatio;
+      dx = 0;
+      dy = (vh - h) / 2;
+    }
+
+    const scale = 2.5;
+    final cx = dx + (loc.rect.x + loc.rect.w / 2) * w;
+    final cy = dy + (loc.rect.y + loc.rect.h / 2) * h;
+    // Center the hotspot, then clamp so the content still covers the viewport.
+    final tx = (vw / 2 - scale * cx).clamp(vw - scale * vw, 0.0).toDouble();
+    final ty = (vh / 2 - scale * cy).clamp(vh - scale * vh, 0.0).toDouble();
+    // viewport = scale * child + translation. Built directly to avoid the
+    // deprecated Matrix4.translate/scale helpers.
+    final target = Matrix4.identity()
+      ..setEntry(0, 0, scale)
+      ..setEntry(1, 1, scale)
+      ..setEntry(0, 3, tx)
+      ..setEntry(1, 3, ty);
+
+    _focusTween = Matrix4Tween(begin: _transform.value, end: target).animate(
+      CurvedAnimation(parent: _focusAnim, curve: Curves.easeInOutCubic),
+    );
+    _focusAnim
+      ..reset()
+      ..forward();
   }
 
   List<VenueLocation> get _activeLocations =>
@@ -281,6 +374,10 @@ class _MapBodyState extends ConsumerState<_MapBody> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<MapFocusRequest?>(mapFocusProvider, (_, next) {
+      if (next != null) _focusOnHotspot(next.locationKey);
+    });
+
     if (_imageSize == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Venue Map')),
@@ -343,12 +440,14 @@ class _MapBodyState extends ConsumerState<_MapBody> {
           if (_editing) const _EditModeBanner(),
           Expanded(
             child: InteractiveViewer(
+              transformationController: _transform,
               maxScale: 6,
               minScale: 1.0,
               panEnabled: !_editing || _selectedKey == null,
               child: LayoutBuilder(builder: (context, constraints) {
                 final cw = constraints.maxWidth;
                 final ch = constraints.maxHeight;
+                _viewport = Size(cw, ch);
                 final containerRatio = cw / ch;
 
                 double w, h, dx, dy;
@@ -381,6 +480,7 @@ class _MapBodyState extends ConsumerState<_MapBody> {
                       offsetY: dy,
                       editing: _editing,
                       selected: _editing && _selectedKey == loc.key,
+                      highlighted: !_editing && _highlightKey == loc.key,
                       onTap: () => _onHotspotTapped(loc),
                       onLongPress:
                           _editing ? () => _editHotspot(loc) : null,
@@ -432,6 +532,7 @@ class _HotspotWidget extends StatelessWidget {
   final double offsetY;
   final bool editing;
   final bool selected;
+  final bool highlighted;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final void Function(double dx, double dy)? onMove;
@@ -445,6 +546,7 @@ class _HotspotWidget extends StatelessWidget {
     required this.offsetY,
     required this.editing,
     required this.selected,
+    this.highlighted = false,
     required this.onTap,
     this.onLongPress,
     this.onMove,
@@ -463,10 +565,15 @@ class _HotspotWidget extends StatelessWidget {
         ? (selected
             ? scheme.tertiary.withValues(alpha: 0.45)
             : scheme.tertiary.withValues(alpha: 0.22))
-        : const Color(0xFF2D5E3E).withValues(alpha: 0.22);
+        : (highlighted
+            ? scheme.primary.withValues(alpha: 0.40)
+            : const Color(0xFF2D5E3E).withValues(alpha: 0.22));
     final border = editing
         ? (selected ? scheme.tertiary : scheme.tertiary.withValues(alpha: 0.7))
-        : const Color(0xFF2D5E3E).withValues(alpha: 0.85);
+        : (highlighted
+            ? scheme.primary
+            : const Color(0xFF2D5E3E).withValues(alpha: 0.85));
+    final borderWidth = (selected || highlighted) ? 3.0 : 2.0;
 
     return Positioned(
       left: left,
@@ -492,7 +599,7 @@ class _HotspotWidget extends StatelessWidget {
                   borderRadius:
                       editing ? BorderRadius.circular(4) : null,
                   color: fill,
-                  border: Border.all(color: border, width: selected ? 3 : 2),
+                  border: Border.all(color: border, width: borderWidth),
                 ),
                 child: editing
                     ? Center(
