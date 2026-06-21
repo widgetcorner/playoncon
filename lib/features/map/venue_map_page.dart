@@ -4,12 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import '../../app_navigation.dart';
 import '../../models/event.dart';
 import '../../models/venue_location.dart';
+import '../../services/location_service.dart';
 import '../../services/locations_store.dart';
+import '../../services/map_georeference.dart';
 import '../../services/schedule_repository.dart';
 
 const _mapAsset = AssetImage('assets/images/venue-map.png');
@@ -66,6 +69,10 @@ class _MapBodyState extends ConsumerState<_MapBody>
   String? _highlightKey;
   Timer? _highlightTimer;
 
+  // "You are here" blue dot.
+  bool _locationOn = false;
+  bool _pendingCenterOnLocation = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +80,20 @@ class _MapBodyState extends ConsumerState<_MapBody>
     _focusAnim.addListener(() {
       final t = _focusTween;
       if (t != null) _transform.value = t.value;
+    });
+    // Auto-enable the dot for users who already granted location, without
+    // prompting anyone at launch.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final p = await Geolocator.checkPermission();
+        if (mounted &&
+            (p == LocationPermission.always ||
+                p == LocationPermission.whileInUse)) {
+          setState(() => _locationOn = true);
+        }
+      } catch (_) {
+        // Plugin unavailable (e.g. tests) — ignore.
+      }
     });
     _stream = _mapAsset.resolve(ImageConfiguration.empty);
     _listener = ImageStreamListener((info, _) {
@@ -131,6 +152,14 @@ class _MapBodyState extends ConsumerState<_MapBody>
   }
 
   void _animateTo(VenueLocation loc) {
+    _animateToNormalized(
+      loc.rect.x + loc.rect.w / 2,
+      loc.rect.y + loc.rect.h / 2,
+    );
+  }
+
+  /// Animates the viewer to center a normalized image point (nx, ny in 0..1).
+  void _animateToNormalized(double nx, double ny) {
     final viewport = _viewport;
     final imageSize = _imageSize;
     if (viewport == null || imageSize == null) return;
@@ -154,9 +183,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
     }
 
     const scale = 2.5;
-    final cx = dx + (loc.rect.x + loc.rect.w / 2) * w;
-    final cy = dy + (loc.rect.y + loc.rect.h / 2) * h;
-    // Center the hotspot, then clamp so the content still covers the viewport.
+    final cx = dx + nx * w;
+    final cy = dy + ny * h;
+    // Center the point, then clamp so the content still covers the viewport.
     final tx = (vw / 2 - scale * cx).clamp(vw - scale * vw, 0.0).toDouble();
     final ty = (vh / 2 - scale * cy).clamp(vh - scale * vh, 0.0).toDouble();
     // viewport = scale * child + translation. Built directly to avoid the
@@ -173,6 +202,37 @@ class _MapBodyState extends ConsumerState<_MapBody>
     _focusAnim
       ..reset()
       ..forward();
+  }
+
+  Future<void> _onLocatePressed() async {
+    if (_locationOn) {
+      // Already tracking → recenter on the current fix.
+      final pos = ref.read(currentPositionProvider).value;
+      if (pos == null) return;
+      final p = MapGeoReference.instance.project(pos.latitude, pos.longitude);
+      if (p != null) {
+        _animateToNormalized(p.dx, p.dy);
+      } else {
+        _snack('You appear to be outside the venue map.');
+      }
+      return;
+    }
+    final granted = await ensureLocationPermission();
+    if (!mounted) return;
+    if (!granted) {
+      _snack('Location is off — enable it in Settings to see your position.');
+      return;
+    }
+    setState(() {
+      _locationOn = true;
+      _pendingCenterOnLocation = true;
+    });
+  }
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   List<VenueLocation> get _activeLocations =>
@@ -386,7 +446,32 @@ class _MapBodyState extends ConsumerState<_MapBody>
     }
     final imageRatio = _imageSize!.width / _imageSize!.height;
 
+    // "You are here" dot: only stream location once enabled (no launch prompt).
+    Offset? dotNorm;
+    if (_locationOn && !_editing) {
+      final pos = ref.watch(currentPositionProvider).value;
+      if (pos != null) {
+        dotNorm = MapGeoReference.instance.project(pos.latitude, pos.longitude);
+        if (dotNorm != null && _pendingCenterOnLocation) {
+          _pendingCenterOnLocation = false;
+          final d = dotNorm;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _animateToNormalized(d.dx, d.dy);
+          });
+        }
+      }
+    }
+
     return Scaffold(
+      floatingActionButton: _editing
+          ? null
+          : FloatingActionButton.small(
+              onPressed: _onLocatePressed,
+              tooltip: 'My location',
+              child: Icon(
+                _locationOn ? Icons.my_location : Icons.location_searching,
+              ),
+            ),
       appBar: AppBar(
         title: Text(_editing ? 'Edit Hotspots' : 'Venue Map'),
         backgroundColor: _editing
@@ -491,11 +576,57 @@ class _MapBodyState extends ConsumerState<_MapBody>
                           ? (rx, ry) => _resizeHotspot(loc, rx, ry, w, h)
                           : null,
                     ),
+                  if (dotNorm != null)
+                    Positioned(
+                      left: dx + dotNorm.dx * w - 12,
+                      top: dy + dotNorm.dy * h - 12,
+                      width: 24,
+                      height: 24,
+                      child: const IgnorePointer(child: _LocationDot()),
+                    ),
                 ]);
               }),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The blue "you are here" marker: a filled dot with a white ring and a soft
+/// translucent halo, à la map apps.
+class _LocationDot extends StatelessWidget {
+  const _LocationDot();
+
+  @override
+  Widget build(BuildContext context) {
+    const blue = Color(0xFF1A73E8);
+    return Center(
+      child: Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: blue.withValues(alpha: 0.18),
+        ),
+        child: Center(
+          child: Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: blue,
+              border: Border.all(color: Colors.white, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

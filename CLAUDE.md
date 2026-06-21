@@ -15,6 +15,7 @@ the why behind major decisions).
 - `onesignal_flutter` for push (M2)
 - `flutter_local_notifications` + `timezone` + `flutter_timezone` for on-device event reminders
 - `scrollable_positioned_list` so "All Sessions" can open scrolled to the current time
+- `geolocator` for the "you are here" dot on the venue map
 - No backend — a Google Sheet published as CSV is the only data source
 
 ## File layout (key paths)
@@ -33,6 +34,8 @@ lib/
     locations_store.dart              hotspot read/write + venueLocationsProvider
     saved_events_store.dart           "My Schedule": event ID → ReminderOption (persisted)
     notification_service.dart         local reminder scheduling (flutter_local_notifications)
+    location_service.dart             device position stream (geolocator) for the map dot
+    map_georeference.dart             GPS → normalized image coords (affine fit to control points)
     network_monitor.dart              connectivity stream
   app_navigation.dart                 selectedTab + mapFocus providers ("Show on map")
   features/
@@ -120,6 +123,25 @@ on `event.attributes`. Codes are case-insensitive, position-independent, multipl
 
 Unknown codes (e.g. `[VIP]`) pass through as generic pills with no app rebuild needed —
 the registry in `lib/models/event_attribute.dart` is a fallback, not a gate.
+
+## "You are here" dot (venue map)
+
+The blue dot is positioned by an affine transform from GPS → normalized image
+coords, least-squares–fit to surveyed control points in
+`lib/services/map_georeference.dart` (`_points`). The map is a stylized drawing,
+so it's approximate (~4% of map size at the fitted points). To recalibrate, edit
+`_points` (lat/lng + the landmark's hotspot rect center as x/y) — the fit
+recomputes automatically; spread points toward the edges and keep ≥3.
+
+- Location is **opt-in**: the Map tab's locate FAB (`Icons.location_searching` →
+  `my_location`) requests permission on first tap, so nothing prompts at launch.
+  Returning users who already granted it get the dot automatically.
+- `currentPositionProvider` (geolocator stream) only runs once enabled; yields
+  `null` when the service/permission is off (dot stays hidden). The dot also hides
+  when the projected point falls outside the map bounds (you're not at the venue).
+- Permissions are wired: iOS `NSLocationWhenInUseUsageDescription` (Info.plist),
+  Android `ACCESS_FINE/COARSE_LOCATION` (manifest). Adding geolocator means a full
+  rebuild, not hot reload.
 
 ## Hotspot editor
 
