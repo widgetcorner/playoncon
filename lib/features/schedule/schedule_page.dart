@@ -70,24 +70,78 @@ class SchedulePage extends ConsumerWidget {
   }
 }
 
-/// A continuous, chronological list of events with inline day headers.
+/// A continuous, chronological list of events with inline day headers, plus a
+/// pinned overlay header showing the current scroll position's day so a user
+/// scrolling deep into a long day can still see which day they're on.
 /// When [savedOnly] is true it shows only events in "My Schedule".
-class _EventList extends ConsumerWidget {
+class _EventList extends ConsumerStatefulWidget {
   final List<Event> events;
   final bool savedOnly;
   const _EventList({required this.events, required this.savedOnly});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final saved = savedOnly
+  ConsumerState<_EventList> createState() => _EventListState();
+}
+
+class _EventListState extends ConsumerState<_EventList> {
+  final _itemPositionsListener = ItemPositionsListener.create();
+  final ValueNotifier<String?> _stickyDayKey = ValueNotifier<String?>(null);
+  List<Object> _items = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _itemPositionsListener.itemPositions.addListener(_updateStickyDay);
+  }
+
+  @override
+  void dispose() {
+    _itemPositionsListener.itemPositions.removeListener(_updateStickyDay);
+    _stickyDayKey.dispose();
+    super.dispose();
+  }
+
+  /// Walks the visible positions for the topmost item still on-screen.
+  /// If that item is itself a day-header that hasn't yet scrolled past the
+  /// top, the inline header in the list owns the display and the sticky
+  /// overlay hides (iOS-Contacts pattern — no duplicated label at the top of
+  /// a section). Otherwise walks back to the most recent day-header so the
+  /// sticky shows which day the visible events belong to.
+  void _updateStickyDay() {
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty || _items.isEmpty) return;
+    ItemPosition? top;
+    for (final p in positions) {
+      if (p.itemTrailingEdge > 0) {
+        if (top == null || p.index < top.index) top = p;
+      }
+    }
+    if (top == null) return;
+    final topItem = _items[top.index];
+    if (topItem is String && top.itemLeadingEdge >= 0) {
+      if (_stickyDayKey.value != null) _stickyDayKey.value = null;
+      return;
+    }
+    for (var i = top.index; i >= 0; i--) {
+      final item = _items[i];
+      if (item is String) {
+        if (_stickyDayKey.value != item) _stickyDayKey.value = item;
+        return;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saved = widget.savedOnly
         ? ref.watch(savedEventsProvider)
         : const <String, Reminder>{};
-    final visible = savedOnly
-        ? events.where((e) => saved.containsKey(e.id)).toList()
-        : events;
+    final visible = widget.savedOnly
+        ? widget.events.where((e) => saved.containsKey(e.id)).toList()
+        : widget.events;
 
     if (visible.isEmpty) {
-      return savedOnly ? const _SavedEmptyState() : const _EmptyState();
+      return widget.savedOnly ? const _SavedEmptyState() : const _EmptyState();
     }
 
     // Flatten into header + event rows so a single ListView scrolls the lot.
@@ -100,22 +154,43 @@ class _EventList extends ConsumerWidget {
       }
       items.add(e);
     }
+    _items = items;
 
     // "All Sessions" opens positioned at the current point in the con; "My
     // Schedule" opens at the top. initialScrollIndex is applied once, when this
     // list is first built with data, so later refreshes don't yank the user.
-    final initialIndex = savedOnly ? 0 : _nowAnchorIndex(items);
+    final initialIndex = widget.savedOnly ? 0 : _nowAnchorIndex(items);
+
+    // After first layout, let the position listener pick the right state —
+    // either hide (inline header visible at top) or show the current day.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateStickyDay();
+    });
 
     return RefreshIndicator(
       onRefresh: () => ref.read(scheduleRepositoryProvider.notifier).refresh(),
-      child: ScrollablePositionedList.builder(
-        itemCount: items.length,
-        initialScrollIndex: initialIndex,
-        itemBuilder: (_, i) {
-          final item = items[i];
-          if (item is String) return _DayHeader(dayKey: item);
-          return _EventTile(event: item as Event);
-        },
+      child: Column(
+        children: [
+          ValueListenableBuilder<String?>(
+            valueListenable: _stickyDayKey,
+            builder: (_, dayKey, _) {
+              if (dayKey == null) return const SizedBox.shrink();
+              return _DayHeader(dayKey: dayKey, sticky: true);
+            },
+          ),
+          Expanded(
+            child: ScrollablePositionedList.builder(
+              itemCount: items.length,
+              initialScrollIndex: initialIndex,
+              itemPositionsListener: _itemPositionsListener,
+              itemBuilder: (_, i) {
+                final item = items[i];
+                if (item is String) return _DayHeader(dayKey: item);
+                return _EventTile(event: item as Event);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -138,13 +213,14 @@ class _EventList extends ConsumerWidget {
 
 class _DayHeader extends StatelessWidget {
   final String dayKey;
-  const _DayHeader({required this.dayKey});
+  final bool sticky;
+  const _DayHeader({required this.dayKey, this.sticky = false});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final date = DateTime.parse(dayKey);
-    return Container(
+    final row = Container(
       width: double.infinity,
       color: scheme.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -156,6 +232,8 @@ class _DayHeader extends StatelessWidget {
             ),
       ),
     );
+    if (!sticky) return row;
+    return Material(elevation: 2, child: row);
   }
 }
 

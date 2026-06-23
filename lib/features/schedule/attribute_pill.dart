@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/event_attribute.dart';
 import '../../theme/poc_theme.dart';
 
-/// Compact pill rendering one event attribute (icon + short label).
+/// Compact pill rendering one event attribute (leading emoji + short label).
 class AttributePill extends StatelessWidget {
   final EventAttribute attribute;
   final bool dense;
@@ -23,10 +23,12 @@ class AttributePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final padH = dense ? 6.0 : 10.0;
+    final padH = dense ? 8.0 : 10.0;
     final padV = dense ? 2.0 : 4.0;
-    final iconSize = dense ? 12.0 : 14.0;
     final fontSize = dense ? 11.0 : 12.0;
+    final text = dense ? attribute.code : attribute.label;
+    final display =
+        attribute.emoji.isEmpty ? text : '${attribute.emoji} $text';
     return Container(
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
@@ -34,20 +36,13 @@ class AttributePill extends StatelessWidget {
         border: Border.all(color: PocColors.saddle, width: 0.7),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(attribute.icon, size: iconSize, color: PocColors.saddleDark),
-          const SizedBox(width: 4),
-          Text(
-            dense ? attribute.code : attribute.label,
-            style: TextStyle(
-              fontSize: fontSize,
-              color: PocColors.inkSoft,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        display,
+        style: TextStyle(
+          fontSize: fontSize,
+          color: PocColors.inkSoft,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
