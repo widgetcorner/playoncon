@@ -1,15 +1,18 @@
 {
   "fill" : {
-    "automatic-gradient" : "display-p3:0.72168,0.70215,0.58838,1.00000"
+    "linear-gradient" : [
+      "display-p3:0.05258,0.07910,0.05634,1.00000",
+      "display-p3:0.05258,0.07910,0.05634,1.00000"
+    ]
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "01_outer_border.png",
-          "name" : "01_outer_border",
+          "image-name" : "layer_4_text_and_icons.png",
+          "name" : "layer_4_text_and_icons",
           "position" : {
-            "scale" : 0.78,
+            "scale" : 0.67,
             "translation-in-points" : [
               0,
               0
@@ -17,10 +20,10 @@
           }
         },
         {
-          "image-name" : "02_brown_ring.png",
-          "name" : "02_brown_ring",
+          "image-name" : "layer_3_green_elements.png",
+          "name" : "layer_3_green_elements",
           "position" : {
-            "scale" : 0.73,
+            "scale" : 0.67,
             "translation-in-points" : [
               0,
               0
@@ -28,10 +31,10 @@
           }
         },
         {
-          "image-name" : "03_cream_center.png",
-          "name" : "03_cream_center",
+          "image-name" : "layer_2_brown_elements.png",
+          "name" : "layer_2_brown_elements",
           "position" : {
-            "scale" : 0.73,
+            "scale" : 0.67,
             "translation-in-points" : [
               0,
               0
@@ -39,21 +42,12 @@
           }
         },
         {
-          "image-name" : "04_green_elements.png",
-          "name" : "04_green_elements",
+          "fill" : "automatic",
+          "hidden" : false,
+          "image-name" : "layer_1_inner_background.png",
+          "name" : "layer_1_inner_background",
           "position" : {
-            "scale" : 0.73,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "image-name" : "05_white_icons_text.png",
-          "name" : "05_white_icons_text",
-          "position" : {
-            "scale" : 0.73,
+            "scale" : 0.67,
             "translation-in-points" : [
               0,
               0
