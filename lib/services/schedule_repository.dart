@@ -104,7 +104,9 @@ class ScheduleRepository extends StateNotifier<ScheduleState> {
         if (resp.statusCode < 200 || resp.statusCode >= 300) {
           throw HttpException('HTTP ${resp.statusCode} for $url');
         }
-        return resp.body;
+        // Google's CSV export omits the charset on text/csv, so `resp.body`
+        // would fall back to Latin-1 and mangle multi-byte emoji (🎓 → "ð…").
+        return utf8.decode(resp.bodyBytes);
       }));
 
       final merged = <String, Event>{};

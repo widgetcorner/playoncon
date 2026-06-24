@@ -204,14 +204,36 @@ class CsvScheduleParser {
   static final RegExp _attrRe =
       RegExp(r'\[([A-Za-z0-9+\-/]{1,8})\]');
 
+  /// Inline emoji used as attribute tags in the 2026+ schedule, in priority
+  /// order. Listed as (emoji, code) so the U+FE0F variation-selector form of
+  /// ⚠️ is stripped before the bare ⚠ fallback runs.
+  static const List<(String, String)> _emojiAttributes = [
+    ('🔞', '18+'),
+    ('🍷', '21+'),
+    ('🎓', 'AT'),
+    ('⚠️', 'PG13'),
+    ('⚠', 'PG13'),
+    ('🎧', 'SF'),
+  ];
+
   static _ExtractedCell _extractAttributes(String cell) {
     final attrs = <String>[];
-    for (final m in _attrRe.allMatches(cell)) {
+    var working = cell;
+
+    for (final m in _attrRe.allMatches(working)) {
       final code = m.group(1)!.toUpperCase();
       if (!attrs.contains(code)) attrs.add(code);
     }
-    final stripped =
-        cell.replaceAll(_attrRe, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    working = working.replaceAll(_attrRe, ' ');
+
+    for (final (emoji, code) in _emojiAttributes) {
+      if (working.contains(emoji)) {
+        if (!attrs.contains(code)) attrs.add(code);
+        working = working.replaceAll(emoji, ' ');
+      }
+    }
+
+    final stripped = working.replaceAll(RegExp(r'\s+'), ' ').trim();
     return _ExtractedCell(title: stripped, attributes: attrs);
   }
 

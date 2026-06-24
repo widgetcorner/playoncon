@@ -21,11 +21,11 @@
 set -euo pipefail
 
 # --- EDIT THESE WHEN THE 2026 SCHEDULE IS LIVE ---------------------------------
-SHEET_BASE="https://docs.google.com/spreadsheets/d/18yKb-CEXTq9tkYCklEiyPVdtG00PdjCY/export?format=csv"
+SHEET_BASE="https://docs.google.com/spreadsheets/d/18HQ0b8jrP-iK_EVxPYffDvA3RBs6viX0/export?format=csv"
 GID_THU_FRI="2027634205"
 GID_SAT_SUN="1820056449"
 DISCORD_URL="https://discord.gg/4GQgGnXN5"
-EVENT_THURSDAY="2025-07-03"   # yyyy-MM-dd of the convention's Thursday
+EVENT_THURSDAY="2026-07-02"   # yyyy-MM-dd of the convention's Thursday
 # ------------------------------------------------------------------------------
 
 CSV_URLS="${SHEET_BASE}&gid=${GID_THU_FRI},${SHEET_BASE}&gid=${GID_SAT_SUN}"

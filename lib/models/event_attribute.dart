@@ -19,8 +19,10 @@ class EventAttribute {
   });
 
   static const Map<String, EventAttribute> _known = {
+    '18+': EventAttribute(
+        code: '18+', label: 'Ages 18+ Only', emoji: '🔞'),
     '21+': EventAttribute(
-        code: '21+', label: 'Ages 21+ Only', emoji: '🔞'),
+        code: '21+', label: 'Ages 21+ Only', emoji: '🍷'),
     'PG13': EventAttribute(
         code: 'PG13', label: 'Not for Children', emoji: '⚠️'),
     'AT': EventAttribute(

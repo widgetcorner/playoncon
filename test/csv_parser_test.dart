@@ -95,6 +95,30 @@ void main() {
     expect(aud.attributes, ['A']);
   });
 
+  test('extracts inline emoji attributes and strips them from titles', () {
+    // 2026 schedule format: 🔞→18+, 🍷→21+, 🎓→AT, ⚠️→PG13, 🎧→SF.
+    final csv = [
+      ',Theater,,Main Gaming\r\n',
+      'Thursday,,,\r\n',
+      '4 PM,Make a Holiday Card 🎓,,Holiday Party ⚠️\r\n',
+      '5 PM,Adult Swim 🍷,,Coffee Service 🎧\r\n',
+      '6 PM,Party 🔞,,Welcome Wagon\r\n',
+    ].join();
+
+    final parser = CsvScheduleParser(
+      const <VenueLocation>[],
+      eventThursday: DateTime(2026, 7, 2),
+    );
+    final byTitle = {for (final e in parser.parse(csv)) e.title: e};
+
+    expect(byTitle['Make a Holiday Card']!.attributes, ['AT']);
+    expect(byTitle['Holiday Party']!.attributes, ['PG13']);
+    expect(byTitle['Adult Swim']!.attributes, ['21+']);
+    expect(byTitle['Coffee Service']!.attributes, ['SF']);
+    expect(byTitle['Party']!.attributes, ['18+']);
+    expect(byTitle['Welcome Wagon']!.attributes, isEmpty);
+  });
+
   test('Outdoors events resolve to a pin via the (Location) title hint', () {
     const rect = NormalizedRect(x: 0, y: 0, w: 0.05, h: 0.05);
     final locations = [
