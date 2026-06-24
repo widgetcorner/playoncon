@@ -42,7 +42,7 @@ class _RootShellState extends ConsumerState<RootShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: (i) =>
-            ref.read(selectedTabProvider.notifier).state = i,
+            ref.read(selectedTabProvider.notifier).set(i),
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.calendar_month), label: 'Schedule'),

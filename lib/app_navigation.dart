@@ -1,9 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'services/last_tab_store.dart';
+
 /// Selected bottom-nav tab in [RootShell]: 0 = Schedule, 1 = Map, 2 = Info.
 /// Held in a provider (not local state) so any screen can switch tabs — e.g.
 /// the "Show on map" deep-link from event detail.
-final selectedTabProvider = StateProvider<int>((_) => 0);
+///
+/// Backed by [LastTabStore]: the choice persists across launches. The initial
+/// value is loaded in `main.dart` and injected via a `ProviderScope` override,
+/// so this builder is only hit if the override is missing.
+final selectedTabProvider = StateNotifierProvider<LastTabStore, int>(
+  (_) => throw StateError(
+    'selectedTabProvider must be overridden in ProviderScope '
+    '(see main.dart).',
+  ),
+);
 
 /// Map tab index, named for readability at call sites.
 const int mapTabIndex = 1;
@@ -26,6 +37,6 @@ extension MapFocusDispatch on WidgetRef {
   void showOnMap(String locationKey) {
     final seq = (read(mapFocusProvider)?.seq ?? 0) + 1;
     read(mapFocusProvider.notifier).state = MapFocusRequest(locationKey, seq);
-    read(selectedTabProvider.notifier).state = mapTabIndex;
+    read(selectedTabProvider.notifier).set(mapTabIndex);
   }
 }

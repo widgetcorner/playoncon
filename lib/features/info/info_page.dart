@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +27,15 @@ class InfoPage extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
           const _LogoHeader(),
-          const SizedBox(height: 8),
+          const _CountdownCard(),
+          ListTile(
+            leading: const Icon(Icons.location_on_outlined),
+            title: const Text(AppConfig.venueName),
+            subtitle: const Text(AppConfig.venueCityState),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openVenueInMaps(),
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.chat_bubble_outline),
             title: const Text('Join the Discord'),
@@ -65,6 +76,24 @@ class InfoPage extends ConsumerWidget {
       ),
     );
   }
+
+  /// Hand the venue off to the device's native maps app: Apple Maps on iOS,
+  /// the `geo:` intent on Android (which the system resolves to Google Maps,
+  /// Waze, etc.).
+  Future<void> _openVenueInMaps() async {
+    final q = Uri.encodeQueryComponent(AppConfig.venueMapsQuery);
+    final Uri uri = Platform.isIOS
+        ? Uri.parse('https://maps.apple.com/?q=$q')
+        : Uri.parse('geo:0,0?q=$q');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      // Fall back to a web search if the platform handler refused (e.g. no
+      // maps app on Android emulator).
+      await launchUrl(
+        Uri.parse('https://www.google.com/maps/search/?api=1&query=$q'),
+        mode: LaunchMode.externalApplication,
+      );
+    }
+  }
 }
 
 class _LogoHeader extends StatelessWidget {
@@ -73,7 +102,7 @@ class _LogoHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Column(
         children: [
           Container(
@@ -106,12 +135,160 @@ class _LogoHeader extends StatelessWidget {
               color: PocColors.forestDark,
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Alabama 4-H Center · Columbiana, AL',
-            style: TextStyle(color: PocColors.inkSoft),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Live countdown to Thursday 4 PM local. Hidden once the moment has passed
+/// (or when [POC_EVENT_THURSDAY] isn't configured).
+class _CountdownCard extends StatefulWidget {
+  const _CountdownCard();
+
+  @override
+  State<_CountdownCard> createState() => _CountdownCardState();
+}
+
+class _CountdownCardState extends State<_CountdownCard> {
+  Timer? _ticker;
+  Duration _remaining = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _recompute();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _recompute());
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _recompute() {
+    final start = AppConfig.eventStart;
+    if (start == null) {
+      _ticker?.cancel();
+      return;
+    }
+    final diff = start.difference(DateTime.now());
+    if (diff.isNegative) {
+      _ticker?.cancel();
+      if (mounted && _remaining != Duration.zero) {
+        setState(() => _remaining = Duration.zero);
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _remaining = diff);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (AppConfig.eventStart == null || _remaining <= Duration.zero) {
+      return const SizedBox.shrink();
+    }
+
+    final days = _remaining.inDays;
+    final hours = _remaining.inHours % 24;
+    final minutes = _remaining.inMinutes % 60;
+    final seconds = _remaining.inSeconds % 60;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Card(
+        elevation: 0,
+        color: PocColors.forestDark.withValues(alpha: 0.06),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: PocColors.forestDark.withValues(alpha: 0.16),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Column(
+            children: [
+              Text(
+                'Play On Con starts in',
+                style: TextStyle(
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                  color: PocColors.inkSoft,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _CountdownUnit(value: days, label: days == 1 ? 'day' : 'days'),
+                  const _CountdownSep(),
+                  _CountdownUnit(value: hours, label: 'h', pad: true),
+                  const _CountdownSep(),
+                  _CountdownUnit(value: minutes, label: 'm', pad: true),
+                  const _CountdownSep(),
+                  _CountdownUnit(value: seconds, label: 's', pad: true),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountdownUnit extends StatelessWidget {
+  final int value;
+  final String label;
+  final bool pad;
+  const _CountdownUnit({
+    required this.value,
+    required this.label,
+    this.pad = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final text = pad ? value.toString().padLeft(2, '0') : value.toString();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: PocColors.forestDark,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: PocColors.inkSoft),
+        ),
+      ],
+    );
+  }
+}
+
+class _CountdownSep extends StatelessWidget {
+  const _CountdownSep();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14, left: 6, right: 6),
+      child: Text(
+        ':',
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          color: PocColors.forestDark.withValues(alpha: 0.5),
+        ),
       ),
     );
   }
