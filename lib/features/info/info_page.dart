@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_config.dart';
 import '../../services/schedule_repository.dart';
 import '../../theme/poc_theme.dart';
+import 'contact_page.dart';
 
 class InfoPage extends ConsumerWidget {
   const InfoPage({super.key});
@@ -35,6 +36,19 @@ class InfoPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openVenueInMaps(),
           ),
+          if (AppConfig.hasScheduleViewUrl) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Printable schedule'),
+              subtitle: const Text('Opens the full Google Sheet'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(
+                Uri.parse(AppConfig.scheduleViewUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
           const Divider(),
           ListTile(
             leading: const Icon(Icons.chat_bubble_outline),
@@ -49,6 +63,16 @@ class InfoPage extends ConsumerWidget {
                       mode: LaunchMode.externalApplication,
                     )
                 : null,
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.mail_outline),
+            title: const Text('Contact'),
+            subtitle: const Text('Reach a director or send app feedback'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ContactPage()),
+            ),
           ),
           const Divider(),
           ListTile(
@@ -70,7 +94,7 @@ class InfoPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('Play On Con'),
-            subtitle: Text('Convention companion · v1.0'),
+            subtitle: Text('Convention companion · v1.0 Beta'),
           ),
         ],
       ),
@@ -135,7 +159,38 @@ class _LogoHeader extends StatelessWidget {
               color: PocColors.forestDark,
             ),
           ),
+          const SizedBox(height: 6),
+          const BetaPill(),
         ],
+      ),
+    );
+  }
+}
+
+/// Small "BETA" badge surfaced near the app name so attendees know this
+/// build is a work-in-progress companion, not the final official app.
+class BetaPill extends StatelessWidget {
+  const BetaPill({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: PocColors.forestDark.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: PocColors.forestDark.withValues(alpha: 0.30),
+        ),
+      ),
+      child: Text(
+        'BETA',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+          color: PocColors.forestDark,
+        ),
       ),
     );
   }

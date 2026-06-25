@@ -1,6 +1,6 @@
 # Play On Con
 
-The official companion app for **Play On Con** — a tabletop and gaming convention held at
+A companion app (Beta) for **Play On Con** — a tabletop and gaming convention held at
 the Alabama 4-H Center in Columbiana, AL.
 
 Built with Flutter for **iOS and Android**, Play On Con is **offline-first**: the full

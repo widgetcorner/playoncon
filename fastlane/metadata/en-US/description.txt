@@ -1,6 +1,6 @@
-Play On Con: the official companion app
+A Play On Con companion app — Beta
 
-Play On Con is a tabletop and gaming convention held each year at the Alabama 4-H Center in Columbiana, Alabama — four days of theater, RPGs, board games, video games, parties, and the outdoors. This app is your pocket-sized guide to the weekend.
+Play On Con is a tabletop and gaming convention held each year at the Alabama 4-H Center in Columbiana, Alabama — four days of theater, RPGs, board games, video games, parties, and the outdoors. This app is a pocket-sized guide to the weekend, currently in Beta.
 
 Designed offline-first. The schedule and venue map work without a network connection, so you're covered in the cabins, the Lodge, and anywhere on the property where signal gets thin.
 
@@ -26,4 +26,4 @@ No account. No login. No ads. No tracking. The app downloads the published sched
 
 ABOUT PLAY ON CON
 
-Play On Con is held annually at the Alabama 4-H Center in Columbiana, Alabama. This app is the official companion for attendees.
+Play On Con is held annually at the Alabama 4-H Center in Columbiana, Alabama. This app is a companion for attendees and is currently in Beta.

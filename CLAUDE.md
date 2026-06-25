@@ -68,6 +68,7 @@ All environment-specific values pass through `--dart-define`. Read them in
 ```bash
 flutter run -d <device-id> \
   --dart-define=POC_SCHEDULE_CSV_URL='<csv-url>[,<csv-url>...]' \
+  --dart-define=POC_SCHEDULE_VIEW_URL='<sheet-view-url>' \
   --dart-define=POC_DISCORD_INVITE_URL='<discord-url>' \
   --dart-define=POC_EVENT_THURSDAY=YYYY-MM-DD
 ```

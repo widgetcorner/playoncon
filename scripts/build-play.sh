@@ -24,7 +24,9 @@ set -euo pipefail
 # Spreadsheet is addressed by tab NAME (not gid) because the source workbook is
 # an uploaded .xlsx — gids aren't exposed in its share HTML. gviz/tq returns
 # CSV by visible tab name; %20=" " and %2B="+" url-encoded.
-SHEET_BASE="https://docs.google.com/spreadsheets/d/1IFsCk650WKiaJ0FDiPOmPNCg1Ysyc6FF/gviz/tq?tqx=out:csv"
+SHEET_ID="1IFsCk650WKiaJ0FDiPOmPNCg1Ysyc6FF"
+SHEET_BASE="https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv"
+SHEET_VIEW_URL="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing"
 TAB_THU_FRI="2026%20Thursday%20%2B%20Friday"
 TAB_SAT_SUN="2026%20Saturday%20%2B%20Sunday"
 DISCORD_URL="https://discord.gg/4GQgGnXN5"
@@ -36,6 +38,7 @@ CSV_URLS="${SHEET_BASE}&sheet=${TAB_THU_FRI},${SHEET_BASE}&sheet=${TAB_SAT_SUN}"
 echo "Building release .aab for Google Play..."
 flutter build appbundle \
   --dart-define=POC_SCHEDULE_CSV_URL="${CSV_URLS}" \
+  --dart-define=POC_SCHEDULE_VIEW_URL="${SHEET_VIEW_URL}" \
   --dart-define=POC_DISCORD_INVITE_URL="${DISCORD_URL}" \
   --dart-define=POC_EVENT_THURSDAY="${EVENT_THURSDAY}"
 

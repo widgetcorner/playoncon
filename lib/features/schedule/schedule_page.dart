@@ -7,6 +7,7 @@ import '../../models/event.dart';
 import '../../services/network_monitor.dart';
 import '../../services/saved_events_store.dart';
 import '../../services/schedule_repository.dart';
+import '../info/info_page.dart' show BetaPill;
 import 'attribute_pill.dart';
 import 'event_detail_page.dart';
 import 'save_event_action.dart';
@@ -27,7 +28,14 @@ class SchedulePage extends ConsumerWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Schedule'),
+          title: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Schedule'),
+              SizedBox(width: 10),
+              BetaPill(),
+            ],
+          ),
           actions: [
             IconButton(
               tooltip: 'Refresh',

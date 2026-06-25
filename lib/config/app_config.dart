@@ -13,6 +13,12 @@ class AppConfig {
       .where((s) => s.isNotEmpty)
       .toList(growable: false);
 
+  /// Human-viewable Google Sheet URL — the same source the CSV ingest reads,
+  /// but in its browser-friendly form so attendees can pull up the full grid
+  /// (or print it). Surfaced on the Info page; tile is hidden when unset.
+  static const String scheduleViewUrl =
+      String.fromEnvironment('POC_SCHEDULE_VIEW_URL');
+
   static const String discordInviteUrl =
       String.fromEnvironment('POC_DISCORD_INVITE_URL');
 
@@ -25,6 +31,7 @@ class AppConfig {
       String.fromEnvironment('POC_EVENT_THURSDAY');
 
   static bool get hasScheduleUrl => scheduleCsvUrl.isNotEmpty;
+  static bool get hasScheduleViewUrl => scheduleViewUrl.isNotEmpty;
   static bool get hasDiscordUrl => discordInviteUrl.isNotEmpty;
   static bool get hasOneSignalId => oneSignalAppId.isNotEmpty;
   static bool get hasEventThursday => eventThursday.isNotEmpty;
