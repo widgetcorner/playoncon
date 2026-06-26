@@ -30,11 +30,23 @@ class AppConfig {
   static const String eventThursday =
       String.fromEnvironment('POC_EVENT_THURSDAY');
 
+  /// Supabase project URL + publishable (default) API key.
+  /// Powers the live golf-cart layer on the venue map: the driver app posts
+  /// positions via `post_position`, this app subscribes to `cart_positions`
+  /// via Realtime. Both must be set or the cart layer is disabled entirely —
+  /// the rest of the app (schedule, map, info) keeps working offline-first.
+  static const String supabaseUrl =
+      String.fromEnvironment('POC_SUPABASE_URL');
+  static const String supabasePublishableKey =
+      String.fromEnvironment('POC_SUPABASE_PUBLISHABLE_KEY');
+
   static bool get hasScheduleUrl => scheduleCsvUrl.isNotEmpty;
   static bool get hasScheduleViewUrl => scheduleViewUrl.isNotEmpty;
   static bool get hasDiscordUrl => discordInviteUrl.isNotEmpty;
   static bool get hasOneSignalId => oneSignalAppId.isNotEmpty;
   static bool get hasEventThursday => eventThursday.isNotEmpty;
+  static bool get hasSupabaseConfig =>
+      supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 
   /// Convention kickoff: 4:00 PM Central on Thursday of Play On Con.
   /// Anchored to America/Chicago (the venue's timezone) so the countdown is

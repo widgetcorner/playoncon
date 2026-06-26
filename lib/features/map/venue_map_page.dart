@@ -9,8 +9,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import '../../app_navigation.dart';
+import '../../models/cart_position.dart';
 import '../../models/event.dart';
 import '../../models/venue_location.dart';
+import '../../services/cart_positions_repository.dart';
 import '../../services/location_service.dart';
 import '../../services/locations_store.dart';
 import '../../services/map_georeference.dart';
@@ -548,6 +550,12 @@ class _MapBodyState extends ConsumerState<_MapBody>
       selectedStatus = _statusFor(selectedLoc.key);
     }
 
+    // Live golf-cart positions (empty map when Supabase isn't configured or in
+    // editor mode — the cart layer never appears while editing hotspots).
+    final carts = _editing
+        ? const <String, CartPosition>{}
+        : (ref.watch(cartPositionsProvider).valueOrNull ?? const {});
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_editing ? 'Edit Hotspots' : 'Venue Map'),
@@ -609,7 +617,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
             : Stack(
                 children: [
                   Positioned.fill(
-                      child: _buildViewerBoard(imageRatio, dotNorm)),
+                      child: _buildViewerBoard(imageRatio, dotNorm, carts)),
                   // Controls: Overview/Detail pill + recenter FAB (top-right).
                   Positioned(
                     top: 12,
@@ -700,7 +708,11 @@ class _MapBodyState extends ConsumerState<_MapBody>
   /// InteractiveViewer. Pins + labels live in a constant-size overlay that is
   /// re-projected from the live transform, with greedy label de-confliction so
   /// labels never stack on each other.
-  Widget _buildViewerBoard(double imageRatio, Offset? dotNorm) {
+  Widget _buildViewerBoard(
+    double imageRatio,
+    Offset? dotNorm,
+    Map<String, CartPosition> carts,
+  ) {
     return LayoutBuilder(builder: (context, constraints) {
       final cw = constraints.maxWidth;
       final ch = constraints.maxHeight;
@@ -737,7 +749,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
         Positioned.fill(
           child: AnimatedBuilder(
             animation: _transform,
-            builder: (context, _) => _buildPinOverlay(cw, ch, dotNorm),
+            builder: (context, _) => _buildPinOverlay(cw, ch, dotNorm, carts),
           ),
         ),
       ]);
@@ -780,7 +792,12 @@ class _MapBodyState extends ConsumerState<_MapBody>
         return Size(tp.width, tp.height);
       });
 
-  Widget _buildPinOverlay(double cw, double ch, Offset? dotNorm) {
+  Widget _buildPinOverlay(
+    double cw,
+    double ch,
+    Offset? dotNorm,
+    Map<String, CartPosition> carts,
+  ) {
     const margin = 64.0;
 
     // Project + cull pins to those near the viewport.
@@ -920,6 +937,26 @@ class _MapBodyState extends ConsumerState<_MapBody>
     children
       ..addAll(lowerLabels)
       ..addAll(lowerPins);
+
+    for (final cart in carts.values) {
+      final norm = MapGeoReference.instance.project(cart.lat, cart.lng);
+      if (norm == null) continue;
+      final c = _project(norm.dx, norm.dy);
+      if (c.dx < -margin ||
+          c.dx > cw + margin ||
+          c.dy < -margin ||
+          c.dy > ch + margin) {
+        continue;
+      }
+      children.add(Positioned(
+        left: c.dx - 14,
+        top: c.dy - 14,
+        width: 28,
+        height: 28,
+        child: _CartMarker(cart: cart),
+      ));
+    }
+
     if (selLabel != null) children.add(selLabel);
     if (selPin != null) children.add(selPin);
 
@@ -1683,6 +1720,46 @@ class _NameDialogState extends State<_NameDialog> {
           child: const Text('Add'),
         ),
       ],
+    );
+  }
+}
+
+/// Live golf-cart marker on the venue map. Distinct from venue category pins
+/// (color + glyph) and from the blue "you are here" dot. Tapping/long-pressing
+/// reveals the cart name + driver, when known.
+class _CartMarker extends StatelessWidget {
+  final CartPosition cart;
+  const _CartMarker({required this.cart});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = cart.displayName ?? 'Cart';
+    final tip = cart.driverName == null || cart.driverName!.isEmpty
+        ? label
+        : '$label — ${cart.driverName}';
+    return Tooltip(
+      message: tip,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFFFC107),
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.electric_rickshaw,
+            size: 16,
+            color: Color(0xFF2E4E2E),
+          ),
+        ),
+      ),
     );
   }
 }

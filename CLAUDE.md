@@ -62,6 +62,12 @@ All environment-specific values pass through `--dart-define`. Read them in
 | `POC_DISCORD_INVITE_URL` | Discord invite |
 | `POC_EVENT_THURSDAY` | yyyy-MM-dd; anchors the grid CSV to real calendar dates |
 | `POC_ONESIGNAL_APP_ID` | OneSignal app id (M2) |
+| `POC_SUPABASE_URL` | Supabase project URL — powers the live golf-cart map layer |
+| `POC_SUPABASE_PUBLISHABLE_KEY` | Supabase default publishable API key (`sb_publishable_...`, not the legacy anon JWT) |
+
+Supabase is optional: when either var is empty the cart layer is disabled and
+the app still works fully offline. Both vars must be set for the live cart
+subscription to come up.
 
 ## Run
 
@@ -70,7 +76,9 @@ flutter run -d <device-id> \
   --dart-define=POC_SCHEDULE_CSV_URL='<csv-url>[,<csv-url>...]' \
   --dart-define=POC_SCHEDULE_VIEW_URL='<sheet-view-url>' \
   --dart-define=POC_DISCORD_INVITE_URL='<discord-url>' \
-  --dart-define=POC_EVENT_THURSDAY=YYYY-MM-DD
+  --dart-define=POC_EVENT_THURSDAY=YYYY-MM-DD \
+  --dart-define=POC_SUPABASE_URL='<supabase-url>' \
+  --dart-define=POC_SUPABASE_PUBLISHABLE_KEY='<sb_publishable_...>'
 ```
 
 Wireless iOS debug bridges drop often ("Lost connection to device"); the installed app
@@ -110,20 +118,32 @@ Friday      |
 
 ### Event attribute tags
 
-Cell text can carry `[CODE]` tokens — the parser strips them from the title and stores them
-on `event.attributes`. Codes are case-insensitive, position-independent, multiple per cell.
+Indicators (21+, sensory friendly, etc.) live **inline in the cell text** — never as
+inserted images. Sheets' CSV export drops images entirely, so anything added via
+Insert → Image won't survive the round-trip; the schedule editors type the marker
+directly into the cell, e.g. `Werewolf 🔥 🎧`. The parser strips markers from the title
+and stores them on `event.attributes` (case-insensitive, position-independent, multiple
+per cell).
 
-| Code | Meaning |
-|---|---|
-| `[21+]` | Ages 21+ Only |
-| `[PG13]` | Not for Children |
-| `[AT]` | Apprentice Track |
-| `[A]` | Auditioned / Casted |
-| `[SF]` | Sensory Friendly |
-| `[OG]` | Sign up at Open Gaming |
+Two formats are accepted in parallel — the 2026 sheet uses emojis; bracket codes are
+the older form, still parsed so cached schedules from earlier in the year keep working.
+The full mapping lives in `_emojiAttributes` / `_attrRe` in `lib/services/csv_parser.dart`.
 
-Unknown codes (e.g. `[VIP]`) pass through as generic pills with no app rebuild needed —
-the registry in `lib/models/event_attribute.dart` is a fallback, not a gate.
+| Emoji (2026+) | Bracket (legacy) | Meaning |
+|---|---|---|
+| 🚫 | `[18+]` | Ages 18+ Only |
+| 🔥 (was 🍷) | `[21+]` | Ages 21+ Only |
+| ⚠️ | `[PG13]` | Not for Children |
+| 🎓 | `[AT]` | Apprentice Track |
+| 🎧 | `[SF]` | Sensory Friendly |
+| — | `[A]` | Auditioned / Casted |
+| — | `[OG]` | Sign up at Open Gaming |
+
+The 🚫/🔥 pair replaced 🔞/🍷 mid-2026; both are still accepted. Unknown markers
+(e.g. a new `[VIP]` or unfamiliar emoji) pass through as generic pills with no app
+rebuild needed — the registry in `lib/models/event_attribute.dart` is a fallback,
+not a gate. To teach the parser a new emoji, add it to `_emojiAttributes`; to label
+it nicely, add an entry in the event-attribute registry.
 
 ## "You are here" dot (venue map)
 
@@ -143,6 +163,33 @@ recomputes automatically; spread points toward the edges and keep ≥3.
 - Permissions are wired: iOS `NSLocationWhenInUseUsageDescription` (Info.plist),
   Android `ACCESS_FINE/COARSE_LOCATION` (manifest). Adding geolocator means a full
   rebuild, not hot reload.
+
+## Live golf-cart layer
+
+Companion to the **PlayOnConDrivers** app (sibling repo at
+`~/Developer/PlayOnConDrivers/`). Drivers broadcast cart GPS to Supabase every
+~10s via the `post_position` RPC; this app subscribes and renders yellow
+`Icons.electric_rickshaw` markers on the venue map.
+
+- `lib/models/cart_position.dart` — row decoder for `cart_positions` (tolerates
+  Realtime payloads that omit the joined `display_name`).
+- `lib/services/cart_positions_repository.dart` — `cartPositionsProvider`
+  (`StreamProvider<Map<String, CartPosition>>`). Bootstraps with a one-shot
+  `carts` lookup (for names) + a recent positions fetch, then subscribes to
+  `client.channel('public:cart_positions').onPostgresChanges(... insert ...)`
+  and sweeps stale entries every 30s. Stale window: 2 min — long enough to
+  forgive brief tunnel/garage gaps, short enough that ghosts clear quickly
+  after a driver signs off.
+- `lib/features/map/venue_map_page.dart` — watches the provider (short-circuited
+  to empty during the debug hotspot editor) and projects each cart's lat/lng
+  through `MapGeoReference.instance.project(...)`, same affine as the "you are
+  here" dot. Carts outside the projected map bounds (or unprojectable) are
+  hidden. Marker layer sits above unselected venue pins, below the selected
+  pin so the user's tapped venue stays on top.
+
+When `POC_SUPABASE_URL` / `POC_SUPABASE_PUBLISHABLE_KEY` are unset, the provider
+returns a permanently-empty stream — no cart markers, no Supabase init, no
+network traffic. The rest of the app is unaffected.
 
 ## Hotspot editor
 
