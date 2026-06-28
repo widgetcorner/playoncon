@@ -23,13 +23,24 @@ dependencies:
   scrollable_positioned_list: ^0.3.8
   geolocator: ^14.0.3
   supabase_flutter: ^2.15.0
-  package_info_plus: ^10.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.2
+
+# Recent fluttercommunity_plus releases (package_info_plus 10.x, device_info_plus
+# 12.x+) added an AGP-version conditional in their android/build.gradle.kts that
+# doesn't apply KGP under AGP 9 — expecting Flutter's "Built-in Kotlin" instead,
+# which then breaks the transitive app_links plugin. Pinning to the last
+# pre-conditional release of each (8.3.1 / 11.5.0) restores unconditional
+# `apply plugin: 'kotlin-android'` and compiles cleanly under AGP 9 +
+# builtInKotlin=false. Both are pulled in transitively (geolocator_linux,
+# app_links via supabase_flutter) — we don't call into either from Dart.
+dependency_overrides:
+  package_info_plus: 8.3.1
+  device_info_plus: 11.5.0
 
 flutter:
   uses-material-design: true

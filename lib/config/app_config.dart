@@ -45,6 +45,14 @@ class AppConfig {
   static const String supabasePublishableKey =
       String.fromEnvironment('POC_SUPABASE_PUBLISHABLE_KEY');
 
+  /// App version string baked in at build time by the store-upload scripts.
+  /// Kept in sync with pubspec.yaml's `version:` by the build script that
+  /// produces the .ipa/.aab. Replaces package_info_plus for the Info-tab
+  /// version line, which spared us a thorny AGP 9 / Built-in Kotlin migration.
+  static const String appVersion =
+      String.fromEnvironment('POC_APP_VERSION');
+  static bool get hasAppVersion => appVersion.isNotEmpty;
+
   static bool get hasScheduleUrl => scheduleCsvUrl.isNotEmpty;
   static bool get hasScheduleViewUrl => scheduleViewUrl.isNotEmpty;
   static bool get hasDiscordUrl => discordInviteUrl.isNotEmpty;
