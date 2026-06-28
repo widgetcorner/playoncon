@@ -30,6 +30,22 @@ class Event {
 
   String get dayKey => DateFormat('yyyy-MM-dd').format(startTime);
 
+  Event copyWith({
+    String? details,
+  }) =>
+      Event(
+        id: id,
+        title: title,
+        startTime: startTime,
+        endTime: endTime,
+        locationKey: locationKey,
+        locationDisplayName: locationDisplayName,
+        track: track,
+        presenter: presenter,
+        details: details ?? this.details,
+        attributes: attributes,
+      );
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,

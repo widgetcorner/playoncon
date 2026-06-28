@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../config/app_config.dart';
 import '../models/event.dart';
 import 'csv_parser.dart';
+import 'event_descriptions.dart';
 import 'locations_store.dart';
 import 'network_monitor.dart';
 
@@ -67,13 +68,14 @@ class ScheduleRepository extends StateNotifier<ScheduleState> {
   static const _cacheFileName = 'schedule_cache.json';
 
   Future<void> bootstrap() async {
+    final descriptions = await EventDescriptions.load();
     final cached = await _readCache();
     if (cached.isNotEmpty) {
-      state = state.copyWith(events: cached);
+      state = state.copyWith(events: descriptions.enrich(cached));
     } else {
       final fallback = await _loadFallback();
       if (fallback.isNotEmpty) {
-        state = state.copyWith(events: fallback);
+        state = state.copyWith(events: descriptions.enrich(fallback));
       }
     }
     if (AppConfig.hasScheduleUrl) {
@@ -115,7 +117,8 @@ class ScheduleRepository extends StateNotifier<ScheduleState> {
           merged[e.id] = e;
         }
       }
-      final events = merged.values.toList();
+      final descriptions = await EventDescriptions.load();
+      final events = descriptions.enrich(merged.values.toList());
 
       await _writeCache(events);
       state = ScheduleState(

@@ -22,6 +22,11 @@ class AppConfig {
   static const String discordInviteUrl =
       String.fromEnvironment('POC_DISCORD_INVITE_URL');
 
+  /// Public link to the full Play On Con program (Google Doc or hosted PDF).
+  /// Surfaced on the Info page; tile is hidden when unset.
+  static const String programUrl =
+      String.fromEnvironment('POC_PROGRAM_URL');
+
   static const String oneSignalAppId =
       String.fromEnvironment('POC_ONESIGNAL_APP_ID');
 
@@ -43,6 +48,7 @@ class AppConfig {
   static bool get hasScheduleUrl => scheduleCsvUrl.isNotEmpty;
   static bool get hasScheduleViewUrl => scheduleViewUrl.isNotEmpty;
   static bool get hasDiscordUrl => discordInviteUrl.isNotEmpty;
+  static bool get hasProgramUrl => programUrl.isNotEmpty;
   static bool get hasOneSignalId => oneSignalAppId.isNotEmpty;
   static bool get hasEventThursday => eventThursday.isNotEmpty;
   static bool get hasSupabaseConfig =>

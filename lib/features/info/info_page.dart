@@ -49,6 +49,19 @@ class InfoPage extends ConsumerWidget {
               ),
             ),
           ],
+          if (AppConfig.hasProgramUrl) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('Program'),
+              subtitle: const Text('Full event descriptions and details'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(
+                Uri.parse(AppConfig.programUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
           const Divider(),
           ListTile(
             leading: const Icon(Icons.chat_bubble_outline),

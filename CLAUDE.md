@@ -59,7 +59,9 @@ All environment-specific values pass through `--dart-define`. Read them in
 | Define | Purpose |
 |---|---|
 | `POC_SCHEDULE_CSV_URL` | **Comma-separated** list of published CSV URLs (one per sheet tab) |
+| `POC_SCHEDULE_VIEW_URL` | Browser-viewable Google Sheet URL — "Printable schedule" tile on the Info page |
 | `POC_DISCORD_INVITE_URL` | Discord invite |
+| `POC_PROGRAM_URL` | Public link to the full program (Google Doc / hosted PDF) — "Program" tile on the Info page |
 | `POC_EVENT_THURSDAY` | yyyy-MM-dd; anchors the grid CSV to real calendar dates |
 | `POC_ONESIGNAL_APP_ID` | OneSignal app id (M2) |
 | `POC_SUPABASE_URL` | Supabase project URL — powers the live golf-cart map layer |
@@ -76,6 +78,7 @@ flutter run -d <device-id> \
   --dart-define=POC_SCHEDULE_CSV_URL='<csv-url>[,<csv-url>...]' \
   --dart-define=POC_SCHEDULE_VIEW_URL='<sheet-view-url>' \
   --dart-define=POC_DISCORD_INVITE_URL='<discord-url>' \
+  --dart-define=POC_PROGRAM_URL='<program-doc-url>' \
   --dart-define=POC_EVENT_THURSDAY=YYYY-MM-DD \
   --dart-define=POC_SUPABASE_URL='<supabase-url>' \
   --dart-define=POC_SUPABASE_PUBLISHABLE_KEY='<sb_publishable_...>'
