@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/app_config.dart';
@@ -104,11 +105,7 @@ class InfoPage extends ConsumerWidget {
                     ref.read(scheduleRepositoryProvider.notifier).refresh(),
           ),
           const Divider(),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Play On Con'),
-            subtitle: Text('Convention companion · v1.0 Beta'),
-          ),
+          const _VersionTile(),
         ],
       ),
     );
@@ -175,6 +172,41 @@ class _LogoHeader extends StatelessWidget {
           const SizedBox(height: 6),
           const BetaPill(),
         ],
+      ),
+    );
+  }
+}
+
+/// Reads the build's CFBundleShortVersionString / versionName at runtime via
+/// package_info_plus so the Info tab always matches what TestFlight and Play
+/// show — no string to keep in sync by hand.
+class _VersionTile extends StatefulWidget {
+  const _VersionTile();
+
+  @override
+  State<_VersionTile> createState() => _VersionTileState();
+}
+
+class _VersionTileState extends State<_VersionTile> {
+  String? _version;
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (!mounted) return;
+      setState(() => _version = info.version);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _version;
+    return ListTile(
+      leading: const Icon(Icons.info_outline),
+      title: const Text('Play On Con'),
+      subtitle: Text(
+        v == null ? 'Convention companion' : 'Convention companion · v$v',
       ),
     );
   }
