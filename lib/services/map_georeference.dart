@@ -26,11 +26,11 @@ class MapGeoReference {
   static final MapGeoReference instance = _fit();
 
   static const _points = <_ControlPoint>[
-    _ControlPoint(33.16675, -86.49314, 0.5728, 0.3981), // Pool (center)
-    _ControlPoint(33.16757, -86.49599, 0.0840, 0.5158), // Main Gaming (NW)
-    _ControlPoint(33.16742, -86.49389, 0.4011, 0.2785), // Theater (N-center)
-    _ControlPoint(33.16710, -86.49193, 0.7121, 0.2294), // Dock & Canoes (E)
-    _ControlPoint(33.16556, -86.49074, 0.9155, 0.3986), // Sand Volleyball (SE)
+    _ControlPoint(33.16675, -86.49314, 0.5514, 0.3808), // Pool (center)
+    _ControlPoint(33.16757, -86.49599, 0.0692, 0.5615), // Main Gaming (NW)
+    _ControlPoint(33.16742, -86.49389, 0.3911, 0.3557), // Theater (N-center)
+    _ControlPoint(33.16710, -86.49193, 0.6674, 0.2098), // Dock & Canoes (E)
+    _ControlPoint(33.16556, -86.49074, 0.8964, 0.2822), // Sand Volleyball (SE)
   ];
 
   /// Projects a GPS coordinate to normalized image coords, or null when the
