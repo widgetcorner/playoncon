@@ -21,14 +21,17 @@
 set -euo pipefail
 
 # --- EDIT THESE WHEN THE 2026 SCHEDULE IS LIVE ---------------------------------
-# Spreadsheet is addressed by tab NAME (not gid) because the source workbook is
-# an uploaded .xlsx — gids aren't exposed in its share HTML. gviz/tq returns
-# CSV by visible tab name; %20=" " and %2B="+" url-encoded.
+# Spreadsheet tabs are addressed by gid (the stable per-tab id) via the CSV
+# export endpoint. The old gviz/tq "&sheet=<tab name>" form silently falls back
+# to the FIRST tab whenever the name doesn't match exactly (e.g. a tab rename),
+# which made the second tab's events disappear from the app. gid is immune to
+# renames. Find a tab's gid in the sheet URL when that tab is selected
+# (…/edit#gid=NNN).
 SHEET_ID="1IFsCk650WKiaJ0FDiPOmPNCg1Ysyc6FF"
-SHEET_BASE="https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv"
+SHEET_EXPORT="https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv"
 SHEET_VIEW_URL="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing"
-TAB_THU_FRI="2026%20Thursday%20%2B%20Friday"
-TAB_SAT_SUN="2026%20Saturday%20%2B%20Sunday"
+GID_THU_FRI="2027634205"   # 2026 Thursday + Friday
+GID_SAT_SUN="1820056449"   # 2026 Saturday + Sunday
 DISCORD_URL="https://discord.gg/4GQgGnXN5"
 PROGRAM_URL="https://docs.google.com/document/d/1zmLj-VqwnR8OnfvF13YAobTkbNGy4lvbv-DVRyfOMyI/edit?usp=sharing"
 EVENT_THURSDAY="2026-07-02"   # yyyy-MM-dd of the convention's Thursday
@@ -36,7 +39,7 @@ SUPABASE_URL="https://yfjnurscnzjvjvhrpgwb.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="sb_publishable__2euDEwhjmzgYiyY6RI21w_SLPw1qDw"
 # ------------------------------------------------------------------------------
 
-CSV_URLS="${SHEET_BASE}&sheet=${TAB_THU_FRI},${SHEET_BASE}&sheet=${TAB_SAT_SUN}"
+CSV_URLS="${SHEET_EXPORT}&gid=${GID_THU_FRI},${SHEET_EXPORT}&gid=${GID_SAT_SUN}"
 
 # Read the version: line from pubspec.yaml so the Info tab's version string is
 # always in sync with what App Store Connect sees (replaces package_info_plus).
