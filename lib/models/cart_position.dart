@@ -12,7 +12,7 @@ class CartPosition {
   final double? heading;
   final double? speed;
   final String? driverName;
-  final DateTime recordedAt;
+  final DateTime updatedAt;
 
   const CartPosition({
     required this.cartId,
@@ -22,7 +22,7 @@ class CartPosition {
     this.heading,
     this.speed,
     this.driverName,
-    required this.recordedAt,
+    required this.updatedAt,
   });
 
   /// Decode a row from `cart_positions`. Tolerates missing `display_name`
@@ -43,7 +43,7 @@ class CartPosition {
       heading: (json['heading'] as num?)?.toDouble(),
       speed: (json['speed'] as num?)?.toDouble(),
       driverName: json['driver_name'] as String?,
-      recordedAt: DateTime.parse(json['recorded_at'] as String).toUtc(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toUtc(),
     );
   }
 
@@ -55,6 +55,6 @@ class CartPosition {
         heading: heading,
         speed: speed,
         driverName: driverName,
-        recordedAt: recordedAt,
+        updatedAt: updatedAt,
       );
 }

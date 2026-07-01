@@ -33,7 +33,7 @@ SHEET_VIEW_URL="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=shar
 GID_THU_FRI="2027634205"   # 2026 Thursday + Friday
 GID_SAT_SUN="1820056449"   # 2026 Saturday + Sunday
 DISCORD_URL="https://discord.gg/4GQgGnXN5"
-PROGRAM_URL="https://docs.google.com/document/d/1zmLj-VqwnR8OnfvF13YAobTkbNGy4lvbv-DVRyfOMyI/edit?usp=sharing"
+PROGRAM_URL="https://drive.google.com/file/d/1sx46MEfKEBswAv_wDgk3Ly1c6PX-ECIB/view?usp=sharing"
 EVENT_THURSDAY="2026-07-02"   # yyyy-MM-dd of the convention's Thursday
 SUPABASE_URL="https://yfjnurscnzjvjvhrpgwb.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="sb_publishable__2euDEwhjmzgYiyY6RI21w_SLPw1qDw"

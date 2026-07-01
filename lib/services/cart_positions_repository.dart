@@ -39,7 +39,7 @@ final cartPositionsProvider =
 
   Map<String, CartPosition> snapshot() {
     final now = DateTime.now().toUtc();
-    byCart.removeWhere((_, p) => now.difference(p.recordedAt) > _staleAfter);
+    byCart.removeWhere((_, p) => now.difference(p.updatedAt) > _staleAfter);
     return Map.unmodifiable(byCart);
   }
 
@@ -69,16 +69,16 @@ final cartPositionsProvider =
       final rows = await client
           .from('cart_positions')
           .select(
-              'cart_id, lat, lng, heading, speed, driver_name, recorded_at')
-          .gte('recorded_at', since)
-          .order('recorded_at', ascending: false);
+              'cart_id, lat, lng, heading, speed, driver_name, updated_at')
+          .gte('updated_at', since)
+          .order('updated_at', ascending: false);
       for (final row in rows) {
         final pos = CartPosition.fromJson(
           row,
           displayName: cartNames[row['cart_id'] as String],
         );
         final existing = byCart[pos.cartId];
-        if (existing == null || pos.recordedAt.isAfter(existing.recordedAt)) {
+        if (existing == null || pos.updatedAt.isAfter(existing.updatedAt)) {
           byCart[pos.cartId] = pos;
         }
       }
@@ -105,7 +105,7 @@ final cartPositionsProvider =
               );
               final existing = byCart[pos.cartId];
               if (existing == null ||
-                  pos.recordedAt.isAfter(existing.recordedAt)) {
+                  pos.updatedAt.isAfter(existing.updatedAt)) {
                 byCart[pos.cartId] = pos;
                 emit();
               }

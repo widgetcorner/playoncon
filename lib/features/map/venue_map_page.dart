@@ -34,6 +34,14 @@ class VenueMapPage extends ConsumerWidget {
 
     return Scaffold(
       body: locationsAsync.when(
+        // Keep the previous data on screen while the provider reloads (e.g.
+        // after Save / Reset in the debug hotspot editor). Without this,
+        // invalidating the provider flips back to AsyncLoading, unmounts
+        // _MapBody, disposes its animation controllers and image stream, and
+        // then rebuilds a fresh state — which looks like a crash and can
+        // actually throw if the pending setState in the caller races the
+        // teardown.
+        skipLoadingOnReload: true,
         loading: () => Scaffold(
           appBar: AppBar(title: const Text('Venue Map')),
           body: const Center(child: CircularProgressIndicator()),
