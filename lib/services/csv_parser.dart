@@ -150,14 +150,21 @@ class CsvScheduleParser {
         final col = entry.key;
         final venue = entry.value;
         if (col >= row.length) continue;
-        final rawCell = _normalizeWhitespace(row[col].toString());
+        final rawMultiline = row[col].toString();
+        final rawCell = _normalizeWhitespace(rawMultiline);
         if (rawCell.isEmpty) continue;
 
-        final extracted = _extractAttributes(rawCell);
+        // Split trailing "Label - H:MM AM/PM" lines off as sub-schedule
+        // items; the event's own title is line 0.
+        final sub = _extractSubSchedule(rawMultiline, start);
+        final firstCell = _normalizeWhitespace(sub.titleText);
+        if (firstCell.isEmpty) continue;
+
+        final extracted = _extractAttributes(firstCell);
         var title = extracted.title;
         if (title.isEmpty) continue;
 
-        final resolution = _resolveLocation(venue, rawCell);
+        final resolution = _resolveLocation(venue, firstCell);
         final locKey = resolution?.loc.key;
         var displayVenue = venue;
         if (resolution != null && resolution.hintDisplay != null) {
@@ -206,6 +213,7 @@ class CsvScheduleParser {
           locationKey: locKey,
           locationDisplayName: displayVenue,
           attributes: extracted.attributes,
+          subSchedule: sub.items,
         ));
         lastEventInfoByVenue[col] =
             (idx: events.length - 1, explicit: hasExplicitEnd);
@@ -244,6 +252,15 @@ class CsvScheduleParser {
       final row = rows[r];
       if (c < 0 || c >= row.length) return '';
       return _normalizeWhitespace(row[c]);
+    }
+
+    // Same as [rawAt], but preserves internal newlines so we can split off
+    // per-line sub-schedule entries. Only used at merge anchors.
+    String rawMultilineAt(int r, int c) {
+      if (r < 0 || r >= rows.length) return '';
+      final row = rows[r];
+      if (c < 0 || c >= row.length) return '';
+      return row[c];
     }
 
     // For any (r, c), returns the value at the cell's merge anchor. Cells
@@ -328,14 +345,19 @@ class CsvScheduleParser {
 
         final rawCell = rawAt(i, col);
         if (rawCell.isEmpty) continue;
+        final rawMultiline = rawMultilineAt(i, col);
 
-        final extracted = _extractAttributes(rawCell);
+        final sub = _extractSubSchedule(rawMultiline, start);
+        final firstCell = _normalizeWhitespace(sub.titleText);
+        if (firstCell.isEmpty) continue;
+
+        final extracted = _extractAttributes(firstCell);
         var title = extracted.title;
         if (title.isEmpty) continue;
 
         final hours = m?.rowSpan ?? 1;
 
-        final resolution = _resolveLocation(venue, rawCell);
+        final resolution = _resolveLocation(venue, firstCell);
         final locKey = resolution?.loc.key;
         var displayVenue = venue;
         if (resolution != null && resolution.hintDisplay != null) {
@@ -375,6 +397,7 @@ class CsvScheduleParser {
           locationKey: locKey,
           locationDisplayName: displayVenue,
           attributes: extracted.attributes,
+          subSchedule: sub.items,
         ));
       }
 
@@ -433,18 +456,34 @@ class CsvScheduleParser {
 
   /// Range pattern for an in-title time override, e.g. "2-6 PM",
   /// "10 PM - 2 AM", "8:30-10:30 PM". Trailing meridiem is required so
-  /// unrelated hyphens (`5-Card Draw`, `5-6 people`) don't match.
+  /// unrelated hyphens (`5-Card Draw`, `5-6 people`) don't match, and
+  /// the expression is anchored to end-of-title so mid-title sub-schedule
+  /// notes (`Learn to Play - 3 PM Tournament - 3:30 PM`) can't override.
   static final RegExp _rangeRe = RegExp(
-    r'(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)',
+    r'(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*$',
     caseSensitive: false,
   );
 
-  /// Bare-start pattern requiring HH:MM (optional meridiem). Meridiem
-  /// missing → inferred from the row's start hour.
+  /// Bare-start pattern requiring HH:MM (optional meridiem), anchored to
+  /// end-of-title. Meridiem missing → inferred from the row's start hour.
   static final RegExp _bareStartRe = RegExp(
-    r'(\d{1,2}):(\d{2})(?:\s*(am|pm))?',
+    r'(\d{1,2}):(\d{2})(?:\s*(am|pm))?\s*$',
     caseSensitive: false,
   );
+
+  /// True when the char immediately before [start] (skipping spaces) is a
+  /// dash — the `Label - Time` sub-schedule pattern Wes uses inside a
+  /// merged block (`Loooot! ... Tournament - 3:30 PM`). Those times
+  /// describe the event's internal schedule, not its own start/end.
+  bool _precededByDash(String title, int start) {
+    var i = start - 1;
+    while (i >= 0 && (title[i] == ' ' || title[i] == '\t')) {
+      i--;
+    }
+    if (i < 0) return false;
+    final ch = title[i];
+    return ch == '-' || ch == '–';
+  }
 
   static int _to24(int h, String meridiem) {
     if (meridiem == 'am') return h == 12 ? 0 : h;
@@ -464,6 +503,10 @@ class CsvScheduleParser {
     String cleanedTitle,
   })? _extractTimeOverride(String title, int rowStartHour24) {
     final range = _rangeRe.firstMatch(title);
+    if (range != null && _precededByDash(title, range.start)) {
+      // Descriptive sub-schedule ("Foo - 3-5 PM"), not the event's time.
+      return null;
+    }
     if (range != null) {
       final sh = int.parse(range.group(1)!);
       final sm = int.parse(range.group(2) ?? '0');
@@ -501,6 +544,10 @@ class CsvScheduleParser {
     }
 
     final bare = _bareStartRe.firstMatch(title);
+    if (bare != null && _precededByDash(title, bare.start)) {
+      // Descriptive sub-schedule ("Tournament - 3:30 PM"), not the event.
+      return null;
+    }
     if (bare != null) {
       final h = int.parse(bare.group(1)!);
       final m = int.parse(bare.group(2)!);
@@ -622,7 +669,89 @@ class CsvScheduleParser {
         presenter: e.presenter,
         details: e.details,
         attributes: e.attributes,
+        subSchedule: e.subSchedule,
       );
+
+  /// Splits [raw] into an event title (all non–sub-schedule lines joined with
+  /// spaces) and any lines that match `Label - H[:MM] [AM/PM]` (the trailing
+  /// "Learn to Play - 3 PM / Tournament - 3:30 PM" pattern). A missing
+  /// meridiem is inferred from [eventStart] — a PM row hour promotes
+  /// single-digit hours to PM.
+  ///
+  /// Continuation lines that carry no dash (`Rocky Horror` / `Picture Show`)
+  /// or a bare time (`11:30 PM`) fold back into the title so downstream
+  /// [_extractAttributes] and [_extractTimeOverride] can pick up inline
+  /// attribute markers and in-title start-time overrides regardless of which
+  /// line they landed on.
+  _SubScheduleExtract _extractSubSchedule(String raw, DateTime eventStart) {
+    final lines = raw
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList(growable: false);
+    if (lines.isEmpty) {
+      return const _SubScheduleExtract(titleText: '', items: []);
+    }
+    if (lines.length == 1) {
+      return _SubScheduleExtract(titleText: lines.first, items: const []);
+    }
+    final items = <ScheduleItem>[];
+    final titleParts = <String>[];
+    for (final line in lines) {
+      final m = _subScheduleLineRe.firstMatch(line);
+      if (m == null) {
+        titleParts.add(line);
+        continue;
+      }
+      final label = m.group(1)!.trim();
+      if (label.isEmpty) {
+        titleParts.add(line);
+        continue;
+      }
+      final h = int.parse(m.group(2)!);
+      final min = int.parse(m.group(3) ?? '0');
+      final meridiem = m.group(4)?.toLowerCase();
+      if (min > 59) {
+        titleParts.add(line);
+        continue;
+      }
+
+      final int hour24;
+      if (meridiem != null) {
+        if (h < 1 || h > 12) {
+          titleParts.add(line);
+          continue;
+        }
+        hour24 = _to24(h, meridiem);
+      } else if (h >= 13 && h <= 23) {
+        hour24 = h;
+      } else if (h < 0 || h > 12) {
+        titleParts.add(line);
+        continue;
+      } else {
+        final rowIsPm = eventStart.hour >= 12;
+        hour24 = rowIsPm && h < 12 ? h + 12 : h;
+      }
+
+      items.add(ScheduleItem(
+        label: label,
+        time: DateTime(
+          eventStart.year, eventStart.month, eventStart.day,
+          hour24, min,
+        ),
+      ));
+    }
+    return _SubScheduleExtract(
+      titleText: titleParts.join(' '),
+      items: items,
+    );
+  }
+
+  /// Matches `Label - H[:MM][ AM/PM]` on a single sub-schedule line.
+  static final RegExp _subScheduleLineRe = RegExp(
+    r'^(.+?)\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*$',
+    caseSensitive: false,
+  );
 
   String _stableId(String title, DateTime start, String location) {
     return '${title.hashCode}_${start.millisecondsSinceEpoch}_${location.hashCode}';
@@ -633,4 +762,10 @@ class _ExtractedCell {
   final String title;
   final List<String> attributes;
   const _ExtractedCell({required this.title, required this.attributes});
+}
+
+class _SubScheduleExtract {
+  final String titleText;
+  final List<ScheduleItem> items;
+  const _SubScheduleExtract({required this.titleText, required this.items});
 }

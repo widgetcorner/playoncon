@@ -1,5 +1,25 @@
 import 'package:intl/intl.dart';
 
+/// A single line inside a merged event cell of the form `Label - H:MM AM/PM`.
+/// Used for multi-phase entries like `Loooot!` where the merged cell runs
+/// 3–5 PM but the sheet author wrote sub-steps inside it
+/// (`Learn to Play - 3 PM`, `Tournament - 3:30 PM`).
+class ScheduleItem {
+  final String label;
+  final DateTime time;
+  const ScheduleItem({required this.label, required this.time});
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'time': time.toIso8601String(),
+      };
+
+  factory ScheduleItem.fromJson(Map<String, dynamic> json) => ScheduleItem(
+        label: json['label'] as String,
+        time: DateTime.parse(json['time'] as String),
+      );
+}
+
 class Event {
   final String id;
   final String title;
@@ -15,6 +35,9 @@ class Event {
   /// Resolved to display labels via [EventAttribute.resolve].
   final List<String> attributes;
 
+  /// Optional in-cell sub-schedule (e.g. Learn to Play → Tournament).
+  final List<ScheduleItem> subSchedule;
+
   Event({
     required this.id,
     required this.title,
@@ -26,6 +49,7 @@ class Event {
     this.presenter,
     this.details,
     this.attributes = const [],
+    this.subSchedule = const [],
   });
 
   String get dayKey => DateFormat('yyyy-MM-dd').format(startTime);
@@ -44,6 +68,7 @@ class Event {
         presenter: presenter,
         details: details ?? this.details,
         attributes: attributes,
+        subSchedule: subSchedule,
       );
 
   Map<String, dynamic> toJson() => {
@@ -57,6 +82,7 @@ class Event {
         'presenter': presenter,
         'details': details,
         'attributes': attributes,
+        'subSchedule': subSchedule.map((s) => s.toJson()).toList(),
       };
 
   factory Event.fromJson(Map<String, dynamic> json) => Event(
@@ -71,6 +97,10 @@ class Event {
         details: json['details'] as String?,
         attributes: (json['attributes'] as List<dynamic>?)
                 ?.map((e) => e as String)
+                .toList() ??
+            const [],
+        subSchedule: (json['subSchedule'] as List<dynamic>?)
+                ?.map((e) => ScheduleItem.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             const [],
       );

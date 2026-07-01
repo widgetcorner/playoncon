@@ -61,6 +61,21 @@ class EventDetailPage extends ConsumerWidget {
             const SizedBox(height: 12),
             AttributePillRow(codes: event.attributes, dense: false),
           ],
+          if (event.subSchedule.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Schedule',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 4),
+            for (final item in event.subSchedule)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  '• ${item.label} — ${timeFmt.format(item.time)}',
+                ),
+              ),
+          ],
           if (event.details != null) ...[
             const SizedBox(height: 16),
             Text(event.details!),

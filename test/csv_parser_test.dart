@@ -388,6 +388,129 @@ void main() {
       expect(archery.startTime, DateTime(2026, 7, 2, 10));
     });
 
+    test('in-title sub-schedule ("Label - Time") does not override the '
+        'merge-derived event time', () {
+      // Wes-reported: Loooot! is a 3-5 PM merged block whose cell text
+      // includes internal schedule notes for sub-events. Magical Athletes
+      // (Thu 8-10 PM) and Castle Combo (Sat 4-6 PM) have the same shape.
+      // The bare "3:30 PM" / "8:30 PM" / "4:30 PM" at the tail is preceded
+      // by " - ", so the dash guard must reject it and preserve the merge.
+      final rows = <List<String>>[
+        ['', 'Theater'],
+        ['Thursday', ''],
+        ['3 PM', 'Loooot! Learn to Play - 3 PM Tournament - 3:30 PM'],
+        ['4 PM', ''],
+        ['5 PM', ''],
+        [
+          '8 PM',
+          'Magical Athletes Learn to Play - 8 PM Tournament - 8:30 PM'
+        ],
+        ['9 PM', ''],
+        ['10 PM', ''],
+        ['Saturday', ''],
+        ['4 PM', 'Castle Combo Learn to Play - 4 PM Tournament - 4:30 PM'],
+        ['5 PM', ''],
+        ['6 PM', ''],
+      ];
+      // Merges (rows are 0-indexed; endRow/endCol are exclusive to match
+      // Sheets API convention used elsewhere in these tests). A 2-row
+      // merge = 2 hours:
+      // - Loooot!         startRow=2, endRow=4  → 3-5 PM
+      // - Magical Athletes startRow=5, endRow=7 → 8-10 PM
+      // - Castle Combo    startRow=9, endRow=11 → 4-6 PM
+      final merges = <CellMerge>[
+        CellMerge(startRow: 2, endRow: 4, startCol: 1, endCol: 2),
+        CellMerge(startRow: 5, endRow: 7, startCol: 1, endCol: 2),
+        CellMerge(startRow: 9, endRow: 11, startCol: 1, endCol: 2),
+      ];
+
+      final parser = CsvScheduleParser(
+        const <VenueLocation>[],
+        eventThursday: DateTime(2026, 7, 2),
+      );
+      final events = parser.parseGrid(rows, merges);
+      final byTitle = {for (final e in events) e.title: e};
+
+      final looot = byTitle.entries
+          .firstWhere((e) => e.key.startsWith('Loooot!'))
+          .value;
+      expect(looot.startTime, DateTime(2026, 7, 2, 15));
+      expect(looot.endTime, DateTime(2026, 7, 2, 17));
+
+      final magical = byTitle.entries
+          .firstWhere((e) => e.key.startsWith('Magical Athletes'))
+          .value;
+      expect(magical.startTime, DateTime(2026, 7, 2, 20));
+      expect(magical.endTime, DateTime(2026, 7, 2, 22));
+
+      final castle = byTitle.entries
+          .firstWhere((e) => e.key.startsWith('Castle Combo'))
+          .value;
+      expect(castle.startTime, DateTime(2026, 7, 4, 16));
+      expect(castle.endTime, DateTime(2026, 7, 4, 18));
+    });
+
+    test('in-cell newlines expose sub-schedule items and trim the title '
+        'to line 0', () {
+      // Production shape: the Sheets API preserves cell newlines. Line 0 is
+      // the event title; trailing "Label - Time" lines are sub-events shown
+      // on the detail page.
+      final rows = <List<String>>[
+        ['', 'Theater'],
+        ['Thursday', ''],
+        ['3 PM', 'Loooot!\nLearn to Play - 3 PM\nTournament - 3:30 PM'],
+        ['4 PM', ''],
+        ['5 PM', ''],
+      ];
+      final merges = <CellMerge>[
+        CellMerge(startRow: 2, endRow: 4, startCol: 1, endCol: 2),
+      ];
+
+      final parser = CsvScheduleParser(
+        const <VenueLocation>[],
+        eventThursday: DateTime(2026, 7, 2),
+      );
+      final events = parser.parseGrid(rows, merges);
+      final looot = events.firstWhere((e) => e.title == 'Loooot!');
+
+      expect(looot.startTime, DateTime(2026, 7, 2, 15));
+      expect(looot.endTime, DateTime(2026, 7, 2, 17));
+      expect(looot.subSchedule, hasLength(2));
+      expect(looot.subSchedule[0].label, 'Learn to Play');
+      expect(looot.subSchedule[0].time, DateTime(2026, 7, 2, 15));
+      expect(looot.subSchedule[1].label, 'Tournament');
+      expect(looot.subSchedule[1].time, DateTime(2026, 7, 2, 15, 30));
+    });
+
+    test('multi-line cell with continuation title + bare time overrides '
+        'start', () {
+      // Rocky Horror in the 2026 sheet: title wraps across two lines and the
+      // in-cell start time (11:30 PM) is on its own line with an inline
+      // attribute marker. The row header is 11 PM, but the event actually
+      // starts at 11:30; the merge span still defines the end (1 AM).
+      final rows = <List<String>>[
+        ['', 'Theater'],
+        ['Friday', ''],
+        ['11 PM', 'Rocky Horror\n Picture Show \n11:30 PM⚠️'],
+        ['Midnight', ''],
+      ];
+      final merges = <CellMerge>[
+        CellMerge(startRow: 2, endRow: 4, startCol: 1, endCol: 2),
+      ];
+
+      final parser = CsvScheduleParser(
+        const <VenueLocation>[],
+        eventThursday: DateTime(2026, 7, 2),
+      );
+      final events = parser.parseGrid(rows, merges);
+      final rocky = events.firstWhere((e) => e.title.startsWith('Rocky'));
+
+      expect(rocky.title, 'Rocky Horror Picture Show');
+      expect(rocky.attributes, ['PG13']);
+      expect(rocky.startTime, DateTime(2026, 7, 3, 23, 30));
+      expect(rocky.endTime, DateTime(2026, 7, 4, 1));
+    });
+
     test('parseGrid strips inline emoji attributes from titles', () {
       final rows = <List<String>>[
         ['', 'Theater'],
