@@ -37,16 +37,24 @@ SHEET_EXPORT="https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=c
 SHEET_VIEW_URL="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing"
 GID_THU_FRI="2027634205"   # 2026 Thursday + Friday
 GID_SAT_SUN="1820056449"   # 2026 Saturday + Sunday
-# Google Sheets API v4 key (project: playoncon). Restricted to Sheets API
-# only. The sheet is publicly readable, so extractability is not a security
-# risk — the key can't do anything on other Google services.
-SHEETS_API_KEY="AIzaSyDnx-U069Dx4dQofQqPY71QQ5QTRs6spbg"
 DISCORD_URL="https://discord.gg/4GQgGnXN5"
 PROGRAM_URL="https://drive.google.com/file/d/1sx46MEfKEBswAv_wDgk3Ly1c6PX-ECIB/view?usp=sharing"
 EVENT_THURSDAY="2026-07-02"   # yyyy-MM-dd of the convention's Thursday
 SUPABASE_URL="https://yfjnurscnzjvjvhrpgwb.supabase.co"
-SUPABASE_PUBLISHABLE_KEY="sb_publishable__2euDEwhjmzgYiyY6RI21w_SLPw1qDw"
 # ------------------------------------------------------------------------------
+
+# Secrets live in scripts/.env.local (git-ignored). Rotate keys there, not here.
+# See scripts/.env.local.example for the required variables.
+ENV_FILE="$(dirname "$0")/.env.local"
+if [ ! -f "${ENV_FILE}" ]; then
+  echo "ERROR: ${ENV_FILE} not found." >&2
+  echo "  Copy scripts/.env.local.example to scripts/.env.local and fill it in." >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+source "${ENV_FILE}"
+: "${SHEETS_API_KEY:?SHEETS_API_KEY must be set in scripts/.env.local}"
+: "${SUPABASE_PUBLISHABLE_KEY:?SUPABASE_PUBLISHABLE_KEY must be set in scripts/.env.local}"
 
 CSV_URLS="${SHEET_EXPORT}&gid=${GID_THU_FRI},${SHEET_EXPORT}&gid=${GID_SAT_SUN}"
 SHEET_GIDS="${GID_THU_FRI},${GID_SAT_SUN}"
