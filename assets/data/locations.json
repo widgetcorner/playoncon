@@ -102,6 +102,9 @@
   {
     "key": "archery",
     "displayName": "Archery",
+    "aliases": [
+      "Archery Field"
+    ],
     "rect": {
       "x": 0.9247706910592559,
       "y": 0.24247426681127993,
@@ -190,7 +193,8 @@
     "key": "picnic-tables",
     "displayName": "Picnic Tables, Canopy & Lower Mayfield",
     "aliases": [
-      "Canopy"
+      "Canopy",
+      "Picnic Tables"
     ],
     "rect": {
       "x": 0.5637203076945954,
@@ -212,6 +216,9 @@
   {
     "key": "lakeview-fire-pit",
     "displayName": "Lakeview Fire Pit",
+    "aliases": [
+      "Lakeside Fire Pit"
+    ],
     "rect": {
       "x": 0.5685170479581336,
       "y": 0.10078899616486169,

@@ -13,6 +13,7 @@ import 'csv_parser.dart';
 import 'event_descriptions.dart';
 import 'locations_store.dart';
 import 'network_monitor.dart';
+import 'sheets_api_client.dart';
 
 export 'locations_store.dart' show venueLocationsProvider;
 
@@ -78,19 +79,18 @@ class ScheduleRepository extends StateNotifier<ScheduleState> {
         state = state.copyWith(events: descriptions.enrich(fallback));
       }
     }
-    if (AppConfig.hasScheduleUrl) {
+    if (AppConfig.hasScheduleSource) {
       unawaited(refresh());
     }
   }
 
   Future<void> refresh() async {
-    if (!AppConfig.hasScheduleUrl) {
-      state = state.copyWith(errorMessage: 'Schedule URL not configured');
+    if (!AppConfig.hasScheduleSource) {
+      state = state.copyWith(errorMessage: 'Schedule source not configured');
       return;
     }
     state = state.copyWith(isSyncing: true, clearError: true);
     try {
-      final urls = AppConfig.scheduleCsvUrls;
       final locations = await _ref.read(venueLocationsProvider.future);
       final parser = CsvScheduleParser(
         locations,
@@ -99,24 +99,46 @@ class ScheduleRepository extends StateNotifier<ScheduleState> {
             : null,
       );
 
-      final bodies = await Future.wait(urls.map((url) async {
-        final resp = await http
-            .get(Uri.parse(url))
-            .timeout(const Duration(seconds: 20));
-        if (resp.statusCode < 200 || resp.statusCode >= 300) {
-          throw HttpException('HTTP ${resp.statusCode} for $url');
-        }
-        // Google's CSV export omits the charset on text/csv, so `resp.body`
-        // would fall back to Latin-1 and mangle multi-byte emoji (🎓 → "ð…").
-        return utf8.decode(resp.bodyBytes);
-      }));
-
       final merged = <String, Event>{};
-      for (final body in bodies) {
-        for (final e in parser.parse(body)) {
-          merged[e.id] = e;
+      if (AppConfig.hasSheetsApiConfig) {
+        // Preferred path: Sheets API v4 with merged-cell data → real event
+        // durations, no more stretch-to-next-event heuristic.
+        final client = SheetsApiClient(
+          apiKey: AppConfig.sheetsApiKey,
+          spreadsheetId: AppConfig.sheetId,
+        );
+        try {
+          final tabs = await client.fetchTabs(AppConfig.sheetGids);
+          for (final t in tabs) {
+            for (final e in parser.parseGrid(t.rows, t.merges)) {
+              merged[e.id] = e;
+            }
+          }
+        } finally {
+          client.close();
+        }
+      } else {
+        // Fallback: CSV export. Durations default to 1 hour + a stretch-to-
+        // next heuristic; kept so builds without the API defines still work.
+        final urls = AppConfig.scheduleCsvUrls;
+        final bodies = await Future.wait(urls.map((url) async {
+          final resp = await http
+              .get(Uri.parse(url))
+              .timeout(const Duration(seconds: 20));
+          if (resp.statusCode < 200 || resp.statusCode >= 300) {
+            throw HttpException('HTTP ${resp.statusCode} for $url');
+          }
+          // Google's CSV export omits the charset on text/csv, so `resp.body`
+          // would fall back to Latin-1 and mangle multi-byte emoji (🎓 → "ð…").
+          return utf8.decode(resp.bodyBytes);
+        }));
+        for (final body in bodies) {
+          for (final e in parser.parse(body)) {
+            merged[e.id] = e;
+          }
         }
       }
+
       final descriptions = await EventDescriptions.load();
       final events = descriptions.enrich(merged.values.toList());
 

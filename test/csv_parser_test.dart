@@ -201,4 +201,96 @@ void main() {
     // No pin for Theater here → unmatched.
     expect(byTitle['Quiz Bowl']!.locationKey, isNull);
   });
+
+  group('parseGrid (Sheets API merge-aware path)', () {
+    test('vertical merge sets duration; adjacent 1-cell events do not stretch',
+        () {
+      // Layout (mirrors the shape of the 2026 sheet cells that were mis-parsed
+      // as 4-hour events by the CSV path):
+      //   row 0: header — cols 1=Theater, 2=Main Gaming
+      //   row 2: Welcome (Theater) — 1 cell, should end at 5 PM
+      //   row 3: Nidhogg (Main Gaming) — 2-row merge, should end at 7 PM
+      //   row 4: (merge continuation — no event)
+      //   row 5: Karaoke (Theater) — 1 cell, should end at 8 PM (NOT stretch)
+      final rows = <List<String>>[
+        ['', 'Theater', 'Main Gaming'],
+        ['Thursday', '', ''],
+        ['4 PM', 'Welcome', ''],
+        ['5 PM', '', 'Nidhogg'],
+        ['6 PM', '', ''],
+        ['7 PM', 'Karaoke', ''],
+      ];
+      final merges = <CellMerge>[
+        CellMerge(startRow: 3, endRow: 5, startCol: 2, endCol: 3),
+      ];
+
+      final parser = CsvScheduleParser(
+        const <VenueLocation>[],
+        eventThursday: DateTime(2026, 7, 2),
+      );
+      final events = parser.parseGrid(rows, merges);
+      final byTitle = {for (final e in events) e.title: e};
+
+      // 1-cell event stays 1 hour, no stretch-to-next.
+      final welcome = byTitle['Welcome']!;
+      expect(welcome.startTime, DateTime(2026, 7, 2, 16));
+      expect(welcome.endTime, DateTime(2026, 7, 2, 17));
+
+      // 2-row merge → 2 hours.
+      final nidhogg = byTitle['Nidhogg']!;
+      expect(nidhogg.startTime, DateTime(2026, 7, 2, 17));
+      expect(nidhogg.endTime, DateTime(2026, 7, 2, 19));
+
+      // Only one Nidhogg (merge continuation row emits nothing).
+      expect(events.where((e) => e.title == 'Nidhogg').length, 1);
+
+      // Late 1-cell event still 1 hour.
+      final karaoke = byTitle['Karaoke']!;
+      expect(karaoke.startTime, DateTime(2026, 7, 2, 19));
+      expect(karaoke.endTime, DateTime(2026, 7, 2, 20));
+    });
+
+    test('horizontal header merge lets events in the second column '
+        'inherit the header (Archery under a spanning Outdoors)', () {
+      // Outdoors spans cols 2–3 as a horizontal header merge. Archery sits
+      // in col 3, whose header cell is empty in the raw grid — API path only
+      // sees the value via the merge anchor at (0, 2).
+      final rows = <List<String>>[
+        ['', 'Theater', 'Outdoors', ''],
+        ['Thursday', '', '', ''],
+        ['10 AM', '', '', 'Archery'],
+      ];
+      final merges = <CellMerge>[
+        CellMerge(startRow: 0, endRow: 1, startCol: 2, endCol: 4),
+      ];
+
+      final parser = CsvScheduleParser(
+        const <VenueLocation>[],
+        eventThursday: DateTime(2026, 7, 2),
+      );
+      final events = parser.parseGrid(rows, merges);
+
+      final archery = events.firstWhere(
+        (e) => e.title == 'Archery',
+        orElse: () => throw StateError('Archery missing from parseGrid output'),
+      );
+      expect(archery.locationDisplayName, 'Outdoors');
+      expect(archery.startTime, DateTime(2026, 7, 2, 10));
+    });
+
+    test('parseGrid strips inline emoji attributes from titles', () {
+      final rows = <List<String>>[
+        ['', 'Theater'],
+        ['Thursday', ''],
+        ['4 PM', 'Adult Swim 🔥'],
+      ];
+      final parser = CsvScheduleParser(
+        const <VenueLocation>[],
+        eventThursday: DateTime(2026, 7, 2),
+      );
+      final events = parser.parseGrid(rows, const []);
+      expect(events.first.title, 'Adult Swim');
+      expect(events.first.attributes, ['21+']);
+    });
+  });
 }

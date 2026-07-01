@@ -35,6 +35,30 @@ class AppConfig {
   static const String eventThursday =
       String.fromEnvironment('POC_EVENT_THURSDAY');
 
+  /// Google Sheets API v4 config. When all three are set the schedule is
+  /// fetched via the API (with merged-cell data intact — real event durations)
+  /// instead of the CSV export path. The workbook must be a **native Google
+  /// Sheet**, not an uploaded .xlsx — Google refuses `includeGridData` on
+  /// Office files.
+  static const String sheetsApiKey =
+      String.fromEnvironment('POC_SHEETS_API_KEY');
+  static const String sheetId = String.fromEnvironment('POC_SHEET_ID');
+  static const String _sheetGidsCsv =
+      String.fromEnvironment('POC_SHEET_GIDS');
+
+  static List<String> get sheetGids => _sheetGidsCsv
+      .split(',')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList(growable: false);
+
+  static bool get hasSheetsApiConfig =>
+      sheetsApiKey.isNotEmpty && sheetId.isNotEmpty && sheetGids.isNotEmpty;
+
+  /// True when the app has any way to fetch the schedule — either the merge-
+  /// aware API path (preferred) or the legacy CSV export.
+  static bool get hasScheduleSource => hasSheetsApiConfig || hasScheduleUrl;
+
   /// Supabase project URL + publishable (default) API key.
   /// Powers the live golf-cart layer on the venue map: the driver app posts
   /// positions via `post_position`, this app subscribes to `cart_positions`

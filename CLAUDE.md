@@ -29,7 +29,8 @@ lib/
     event_attribute.dart              [TAG] code → label/icon registry
     venue_location.dart               Hotspot data class + copyWith + aliases
   services/
-    csv_parser.dart                   grid CSV walker (see "Sheet format")
+    csv_parser.dart                   grid walker for CSV (parse) and Sheets API grid (parseGrid, merge-aware)
+    sheets_api_client.dart            Sheets API v4 client — pulls rows + merge ranges
     schedule_repository.dart          fetch/cache/expose events (StateNotifier)
     locations_store.dart              hotspot read/write + venueLocationsProvider
     saved_events_store.dart           "My Schedule": event ID → Reminder + last custom (persisted)
@@ -58,7 +59,10 @@ All environment-specific values pass through `--dart-define`. Read them in
 
 | Define | Purpose |
 |---|---|
-| `POC_SCHEDULE_CSV_URL` | **Comma-separated** list of published CSV URLs (one per sheet tab) |
+| `POC_SHEETS_API_KEY` | Google Sheets API v4 key. When set alongside `POC_SHEET_ID` + `POC_SHEET_GIDS`, the app fetches via the API (merged cells preserved) instead of the CSV export. Sheet must be a **native Google Sheet**, not .xlsx |
+| `POC_SHEET_ID` | Spreadsheet ID (from `/d/<id>/` in the sheet URL) — used with the Sheets API path |
+| `POC_SHEET_GIDS` | **Comma-separated** list of tab gids (numeric) to pull — Sheets API path |
+| `POC_SCHEDULE_CSV_URL` | **Comma-separated** list of published CSV URLs (one per sheet tab). Legacy fallback when the API defines are missing — durations get a 1-hour default + stretch-to-next heuristic |
 | `POC_SCHEDULE_VIEW_URL` | Browser-viewable Google Sheet URL — "Printable schedule" tile on the Info page |
 | `POC_DISCORD_INVITE_URL` | Discord invite |
 | `POC_PROGRAM_URL` | Public link to the full program (Google Doc / hosted PDF) — "Program" tile on the Info page |
@@ -75,6 +79,9 @@ subscription to come up.
 
 ```bash
 flutter run -d <device-id> \
+  --dart-define=POC_SHEETS_API_KEY='<sheets-api-key>' \
+  --dart-define=POC_SHEET_ID='<spreadsheet-id>' \
+  --dart-define=POC_SHEET_GIDS='<gid>[,<gid>...]' \
   --dart-define=POC_SCHEDULE_CSV_URL='<csv-url>[,<csv-url>...]' \
   --dart-define=POC_SCHEDULE_VIEW_URL='<sheet-view-url>' \
   --dart-define=POC_DISCORD_INVITE_URL='<discord-url>' \
@@ -115,6 +122,17 @@ Friday      |
   parser handles late-night roll: an AM time after a PM time on the same day flips to the
   next calendar day.
 - Each non-empty cell at a venue column becomes one `Event`.
+- Duration comes from the sheet's **vertical merge span** on the API path: a 1-cell
+  entry is a 1-hour event, a 2-row merge is 2 hours, etc. Google Sheets' CSV export
+  drops merges entirely, so the legacy CSV path defaults every event to 1 hour and
+  stretches it to the next non-empty slot in the same column — which over-inflates
+  events with a following gap (Malevolent Karaoke, Welcome Wagon in 2026). The
+  API path removes that guesswork; keep the sheet a **native Google Sheet** to
+  keep it available.
+- Horizontal header merges are how `Outdoors` covers multiple physical columns
+  (e.g. Archery lives in the second column under a spanning "Outdoors" header).
+  The API path inherits the header from the merge anchor; the CSV path can't and
+  drops those events.
 - The Google Sheets CSV export uses **CRLF row separators with bare LF inside quoted
   multi-line cells** — the parser uses the default `eol` to distinguish the two.
 - Sheet tabs are split into separate gids; pass each as a CSV URL in the comma-separated list.

@@ -3,6 +3,26 @@ import 'package:csv/csv.dart';
 import '../models/event.dart';
 import '../models/venue_location.dart';
 
+/// A merged-cell range from a Google Sheet. `endRow`/`endCol` are exclusive,
+/// matching the Sheets API v4 shape.
+class CellMerge {
+  final int startRow;
+  final int endRow;
+  final int startCol;
+  final int endCol;
+  const CellMerge({
+    required this.startRow,
+    required this.endRow,
+    required this.startCol,
+    required this.endCol,
+  });
+
+  int get rowSpan => endRow - startRow;
+
+  bool contains(int r, int c) =>
+      r >= startRow && r < endRow && c >= startCol && c < endCol;
+}
+
 /// Parses the Play On Con master schedule, which is a 2-D grid:
 ///
 /// ```
@@ -153,6 +173,141 @@ class CsvScheduleParser {
           attributes: extracted.attributes,
         ));
         lastEventIdxByVenue[col] = events.length - 1;
+      }
+
+      prevHour = t.hour;
+    }
+
+    return events;
+  }
+
+  /// Merge-aware parse for the Sheets API v4 grid payload. Unlike [parse]
+  /// (which walks a CSV and can only guess durations by patching each event's
+  /// end time to the next non-empty cell — over-inflating events with empty
+  /// follow-up slots), this reads the sheet's actual vertical merge spans:
+  ///
+  ///   * A 2-row merge → 2-hour event
+  ///   * A 1-cell entry → 1-hour event (no more stretching to fill gaps)
+  ///
+  /// Horizontal header merges are how "Outdoors" spans two physical columns
+  /// in the 2026 sheet — cells in the second column pick up the header via
+  /// the merge anchor rather than being dropped as empty-header columns.
+  List<Event> parseGrid(List<List<String>> rows, List<CellMerge> merges) {
+    if (_eventThursday == null) return const [];
+    if (rows.isEmpty) return const [];
+
+    CellMerge? mergeContaining(int r, int c) {
+      for (final m in merges) {
+        if (m.contains(r, c)) return m;
+      }
+      return null;
+    }
+
+    String rawAt(int r, int c) {
+      if (r < 0 || r >= rows.length) return '';
+      final row = rows[r];
+      if (c < 0 || c >= row.length) return '';
+      return _normalizeWhitespace(row[c]);
+    }
+
+    // For any (r, c), returns the value at the cell's merge anchor. Cells
+    // inside a merge come back empty from the API; only the anchor carries
+    // `formattedValue`, so we always resolve through the anchor.
+    String valueAt(int r, int c) {
+      final m = mergeContaining(r, c);
+      if (m == null) return rawAt(r, c);
+      return rawAt(m.startRow, m.startCol);
+    }
+
+    // Locate the venue header row by finding "Theater" in column 1.
+    var headerRowIdx = -1;
+    for (var i = 0; i < rows.length; i++) {
+      if (valueAt(i, 1).toLowerCase() == 'theater') {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx < 0) return const [];
+
+    // Row widths vary in the API response (trailing empties omitted). Column
+    // extent is the max of any row length + any merge that reaches further.
+    var maxCol = 0;
+    for (final r in rows) {
+      if (r.length > maxCol) maxCol = r.length;
+    }
+    for (final m in merges) {
+      if (m.endCol > maxCol) maxCol = m.endCol;
+    }
+
+    final venueByCol = <int, String>{};
+    for (var c = 1; c < maxCol; c++) {
+      final v = valueAt(headerRowIdx, c);
+      if (v.isEmpty) continue;
+      // Skip the right-side mirror column (holds time labels like "4 PM").
+      if (_parseTime(v) != null) continue;
+      venueByCol[c] = v;
+    }
+    if (venueByCol.isEmpty) return const [];
+
+    final events = <Event>[];
+    DateTime? currentDayDate;
+    int? prevHour;
+
+    for (var i = headerRowIdx + 1; i < rows.length; i++) {
+      final firstCell = valueAt(i, 0);
+
+      final dayOffset = _dayOffsets[firstCell.toLowerCase()];
+      if (dayOffset != null) {
+        currentDayDate = _eventThursday.add(Duration(days: dayOffset));
+        prevHour = null;
+        continue;
+      }
+
+      final t = _parseTime(firstCell);
+      if (t == null) continue;
+      if (currentDayDate == null) continue;
+
+      // Late-night roll: prev was evening (>=8pm), now early morning (<6am)
+      // → events belong to the next calendar day.
+      if (prevHour != null && t.hour < 6 && prevHour >= 20) {
+        currentDayDate = currentDayDate.add(const Duration(days: 1));
+      }
+
+      final start = DateTime(
+        currentDayDate.year,
+        currentDayDate.month,
+        currentDayDate.day,
+        t.hour,
+        t.minute,
+      );
+
+      for (final entry in venueByCol.entries) {
+        final col = entry.key;
+        final venue = entry.value;
+
+        final m = mergeContaining(i, col);
+        // Skip cells that continue a merge — the event was already emitted at
+        // the merge's top-left anchor row.
+        if (m != null && (m.startRow != i || m.startCol != col)) continue;
+
+        final rawCell = rawAt(i, col);
+        if (rawCell.isEmpty) continue;
+
+        final extracted = _extractAttributes(rawCell);
+        final title = extracted.title;
+        if (title.isEmpty) continue;
+
+        final hours = m?.rowSpan ?? 1;
+        final locKey = _resolveLocation(venue, rawCell)?.key;
+        events.add(Event(
+          id: _stableId(title, start, venue),
+          title: title,
+          startTime: start,
+          endTime: start.add(Duration(hours: hours)),
+          locationKey: locKey,
+          locationDisplayName: venue,
+          attributes: extracted.attributes,
+        ));
       }
 
       prevHour = t.hour;
