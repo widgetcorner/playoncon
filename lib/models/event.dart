@@ -52,7 +52,12 @@ class Event {
     this.subSchedule = const [],
   });
 
-  String get dayKey => DateFormat('yyyy-MM-dd').format(startTime);
+  String get dayKey {
+    final anchor = startTime.hour < 3
+        ? startTime.subtract(const Duration(days: 1))
+        : startTime;
+    return DateFormat('yyyy-MM-dd').format(anchor);
+  }
 
   Event copyWith({
     String? details,
