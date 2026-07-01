@@ -108,7 +108,9 @@ class CsvScheduleParser {
     if (venueByCol.isEmpty) return const [];
 
     final events = <Event>[];
-    final lastEventIdxByVenue = <int, int>{};
+    // (event index, whether that event's end was set explicitly by an in-title
+    // time range — if so, later rows must not stretch it.)
+    final lastEventInfoByVenue = <int, ({int idx, bool explicit})>{};
     DateTime? currentDayDate;
     int? prevHour;
 
@@ -122,7 +124,7 @@ class CsvScheduleParser {
       if (dayOffset != null) {
         currentDayDate = _eventThursday.add(Duration(days: dayOffset));
         prevHour = null;
-        lastEventIdxByVenue.clear();
+        lastEventInfoByVenue.clear();
         continue;
       }
 
@@ -152,27 +154,61 @@ class CsvScheduleParser {
         if (rawCell.isEmpty) continue;
 
         final extracted = _extractAttributes(rawCell);
-        final title = extracted.title;
+        var title = extracted.title;
         if (title.isEmpty) continue;
 
-        // Patch the previous event at this venue to end when this slot starts.
-        final prevIdx = lastEventIdxByVenue[col];
-        if (prevIdx != null) {
-          final prev = events[prevIdx];
-          events[prevIdx] = _withEnd(prev, start);
+        final resolution = _resolveLocation(venue, rawCell);
+        final locKey = resolution?.loc.key;
+        var displayVenue = venue;
+        if (resolution != null && resolution.hintDisplay != null) {
+          displayVenue = resolution.hintDisplay!;
+          title = _stripFirst(title, resolution.hintFullMatch!);
+          if (title.isEmpty) continue;
         }
 
-        final locKey = _resolveLocation(venue, rawCell)?.key;
+        var eventStart = start;
+        var eventEnd = start.add(const Duration(hours: 1));
+        final override = _extractTimeOverride(title, start.hour);
+        final hasExplicitEnd = override != null && override.endHour != null;
+        if (override != null) {
+          title = override.cleanedTitle;
+          if (title.isEmpty) continue;
+          eventStart = DateTime(
+            start.year, start.month, start.day,
+            override.startHour, override.startMinute,
+          );
+          if (override.endHour != null) {
+            var e = DateTime(
+              start.year, start.month, start.day,
+              override.endHour!, override.endMinute!,
+            );
+            if (override.endNextDay) e = e.add(const Duration(days: 1));
+            eventEnd = e;
+          } else {
+            final minEnd = eventStart.add(const Duration(minutes: 30));
+            if (eventEnd.isBefore(minEnd)) eventEnd = minEnd;
+          }
+        }
+
+        // Patch the previous event at this venue to end when this slot starts —
+        // unless it already set its end via an in-title range.
+        final prevInfo = lastEventInfoByVenue[col];
+        if (prevInfo != null && !prevInfo.explicit) {
+          final prev = events[prevInfo.idx];
+          events[prevInfo.idx] = _withEnd(prev, start);
+        }
+
         events.add(Event(
-          id: _stableId(title, start, venue),
+          id: _stableId(title, eventStart, venue),
           title: title,
-          startTime: start,
-          endTime: start.add(const Duration(hours: 1)),
+          startTime: eventStart,
+          endTime: eventEnd,
           locationKey: locKey,
-          locationDisplayName: venue,
+          locationDisplayName: displayVenue,
           attributes: extracted.attributes,
         ));
-        lastEventIdxByVenue[col] = events.length - 1;
+        lastEventInfoByVenue[col] =
+            (idx: events.length - 1, explicit: hasExplicitEnd);
       }
 
       prevHour = t.hour;
@@ -294,18 +330,50 @@ class CsvScheduleParser {
         if (rawCell.isEmpty) continue;
 
         final extracted = _extractAttributes(rawCell);
-        final title = extracted.title;
+        var title = extracted.title;
         if (title.isEmpty) continue;
 
         final hours = m?.rowSpan ?? 1;
-        final locKey = _resolveLocation(venue, rawCell)?.key;
+
+        final resolution = _resolveLocation(venue, rawCell);
+        final locKey = resolution?.loc.key;
+        var displayVenue = venue;
+        if (resolution != null && resolution.hintDisplay != null) {
+          displayVenue = resolution.hintDisplay!;
+          title = _stripFirst(title, resolution.hintFullMatch!);
+          if (title.isEmpty) continue;
+        }
+
+        var eventStart = start;
+        var eventEnd = start.add(Duration(hours: hours));
+        final override = _extractTimeOverride(title, start.hour);
+        if (override != null) {
+          title = override.cleanedTitle;
+          if (title.isEmpty) continue;
+          eventStart = DateTime(
+            start.year, start.month, start.day,
+            override.startHour, override.startMinute,
+          );
+          if (override.endHour != null) {
+            var e = DateTime(
+              start.year, start.month, start.day,
+              override.endHour!, override.endMinute!,
+            );
+            if (override.endNextDay) e = e.add(const Duration(days: 1));
+            eventEnd = e;
+          } else {
+            final minEnd = eventStart.add(const Duration(minutes: 30));
+            if (eventEnd.isBefore(minEnd)) eventEnd = minEnd;
+          }
+        }
+
         events.add(Event(
-          id: _stableId(title, start, venue),
+          id: _stableId(title, eventStart, venue),
           title: title,
-          startTime: start,
-          endTime: start.add(Duration(hours: hours)),
+          startTime: eventStart,
+          endTime: eventEnd,
           locationKey: locKey,
-          locationDisplayName: venue,
+          locationDisplayName: displayVenue,
           attributes: extracted.attributes,
         ));
       }
@@ -319,12 +387,30 @@ class CsvScheduleParser {
   /// Resolves a cell to a pin: first by exact column header, then — when the
   /// header is a broad category with no pin of its own (e.g. "Outdoors") — by
   /// a location hint parenthesized in the title, like "Beer Croquet (Rec Field)".
-  VenueLocation? _resolveLocation(String header, String rawCell) {
+  ///
+  /// When resolution comes via a hint (not the header), the record's
+  /// [hintDisplay] holds the raw parenthetical text preserving case so the
+  /// caller can use it as the event's `locationDisplayName` (replacing the
+  /// broad category), and [hintFullMatch] holds the `(hint)` substring to
+  /// strip from the title.
+  ({VenueLocation loc, String? hintDisplay, String? hintFullMatch})?
+      _resolveLocation(String header, String rawCell) {
     final direct = _byHeader[header.toLowerCase()];
-    if (direct != null) return direct;
-    for (final hint in _extractHints(rawCell)) {
-      final match = _byHint[hint];
-      if (match != null) return match;
+    if (direct != null) {
+      return (loc: direct, hintDisplay: null, hintFullMatch: null);
+    }
+    for (final m in _hintRe.allMatches(rawCell)) {
+      final raw = m.group(1)!;
+      final norm = _normalizeHint(raw);
+      if (norm.isEmpty) continue;
+      final match = _byHint[norm];
+      if (match != null) {
+        return (
+          loc: match,
+          hintDisplay: _normalizeWhitespace(raw),
+          hintFullMatch: m.group(0),
+        );
+      }
     }
     return null;
   }
@@ -336,13 +422,118 @@ class CsvScheduleParser {
 
   static final RegExp _hintRe = RegExp(r'\(([^)]+)\)');
 
-  /// Normalized location hints parenthesized in a title, e.g.
-  /// "Pokeball Hunt (Mini-golf)" → ["mini golf"].
-  static Iterable<String> _extractHints(String cell) sync* {
-    for (final m in _hintRe.allMatches(cell)) {
-      final h = _normalizeHint(m.group(1)!);
-      if (h.isNotEmpty) yield h;
+  /// Removes the first occurrence of [needle] from [source] and collapses
+  /// resulting whitespace.
+  static String _stripFirst(String source, String needle) {
+    final i = source.indexOf(needle);
+    if (i < 0) return source;
+    final out = '${source.substring(0, i)} ${source.substring(i + needle.length)}';
+    return out.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  /// Range pattern for an in-title time override, e.g. "2-6 PM",
+  /// "10 PM - 2 AM", "8:30-10:30 PM". Trailing meridiem is required so
+  /// unrelated hyphens (`5-Card Draw`, `5-6 people`) don't match.
+  static final RegExp _rangeRe = RegExp(
+    r'(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)',
+    caseSensitive: false,
+  );
+
+  /// Bare-start pattern requiring HH:MM (optional meridiem). Meridiem
+  /// missing → inferred from the row's start hour.
+  static final RegExp _bareStartRe = RegExp(
+    r'(\d{1,2}):(\d{2})(?:\s*(am|pm))?',
+    caseSensitive: false,
+  );
+
+  static int _to24(int h, String meridiem) {
+    if (meridiem == 'am') return h == 12 ? 0 : h;
+    return h == 12 ? 12 : h + 12; // pm
+  }
+
+  /// Parses an in-title time override (range or bare start). Returns null
+  /// when no valid time expression is found. Callers use this to override
+  /// the row-derived start (and, for a range, the merge- or stretch-derived
+  /// end). Bare-start without a meridiem is disambiguated by [rowStartHour24].
+  ({
+    int startHour,
+    int startMinute,
+    int? endHour,
+    int? endMinute,
+    bool endNextDay,
+    String cleanedTitle,
+  })? _extractTimeOverride(String title, int rowStartHour24) {
+    final range = _rangeRe.firstMatch(title);
+    if (range != null) {
+      final sh = int.parse(range.group(1)!);
+      final sm = int.parse(range.group(2) ?? '0');
+      final sMeridiem = range.group(3)?.toLowerCase();
+      final eh = int.parse(range.group(4)!);
+      final em = int.parse(range.group(5) ?? '0');
+      final eMeridiem = range.group(6)!.toLowerCase();
+      if (sh < 1 || sh > 12 || eh < 1 || eh > 12) return null;
+      if (sm > 59 || em > 59) return null;
+
+      var startAm = sMeridiem ?? eMeridiem;
+      var sHour24 = _to24(sh, startAm);
+      final eHour24 = _to24(eh, eMeridiem);
+      // Shared meridiem but numerically start > end (e.g. "10-2 PM")
+      // → start is opposite meridiem (10 AM → 2 PM).
+      if (sMeridiem == null && sHour24 > eHour24) {
+        startAm = eMeridiem == 'pm' ? 'am' : 'pm';
+        sHour24 = _to24(sh, startAm);
+      }
+      final endNextDay = eHour24 < sHour24 ||
+          (eHour24 == sHour24 && em < sm);
+
+      final cleaned = title
+          .replaceRange(range.start, range.end, ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      return (
+        startHour: sHour24,
+        startMinute: sm,
+        endHour: eHour24,
+        endMinute: em,
+        endNextDay: endNextDay,
+        cleanedTitle: cleaned,
+      );
     }
+
+    final bare = _bareStartRe.firstMatch(title);
+    if (bare != null) {
+      final h = int.parse(bare.group(1)!);
+      final m = int.parse(bare.group(2)!);
+      final meridiem = bare.group(3)?.toLowerCase();
+      if (m > 59) return null;
+      if (meridiem != null && (h < 1 || h > 12)) return null;
+      if (meridiem == null && (h < 0 || h > 23)) return null;
+
+      final int hour24;
+      if (meridiem != null) {
+        hour24 = _to24(h, meridiem);
+      } else if (h >= 13) {
+        hour24 = h; // Already 24-hour form.
+      } else {
+        // Infer meridiem from the row's start hour. Row PM → assume PM.
+        final rowIsPm = rowStartHour24 >= 12;
+        hour24 = rowIsPm && h < 12 ? h + 12 : h;
+      }
+
+      final cleaned = title
+          .replaceRange(bare.start, bare.end, ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      return (
+        startHour: hour24,
+        startMinute: m,
+        endHour: null,
+        endMinute: null,
+        endNextDay: false,
+        cleanedTitle: cleaned,
+      );
+    }
+    return null;
   }
 
   int _findVenueHeaderRow(List<List<dynamic>> rows) {

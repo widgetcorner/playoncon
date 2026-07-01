@@ -160,15 +160,125 @@ void main() {
         CsvScheduleParser(locations, eventThursday: DateTime(2025, 7, 3));
     final byTitle = {for (final e in parser.parse(csv)) e.title: e};
 
-    // Header resolves directly.
+    // Header resolves directly — Theater column, name preserved.
     expect(byTitle['Quiz Bowl']!.locationKey, 'theater');
-    // "Outdoors" has no pin → resolve by the parenthetical hint.
-    expect(byTitle['Cooler Yacht-Zee (Rec Field)']!.locationKey,
-        'recreation-field');
-    expect(byTitle['Pokeball Hunt (Mini-golf)']!.locationKey, 'mini-golf');
-    expect(byTitle['Color Wars (Canopy)']!.locationKey, 'picnic-tables');
-    // No hint, no matching header → unmatched (still listed in the schedule).
-    expect(byTitle['Nature Run / Walk']!.locationKey, isNull);
+    expect(byTitle['Quiz Bowl']!.locationDisplayName, 'Theater');
+
+    // "Outdoors" has no pin → resolve by the parenthetical hint. Title has
+    // the hint stripped, and locationDisplayName becomes the hint text
+    // (case preserved from the sheet) instead of the raw "Outdoors" column.
+    final rec = byTitle['Cooler Yacht-Zee']!;
+    expect(rec.locationKey, 'recreation-field');
+    expect(rec.locationDisplayName, 'Rec Field');
+
+    final golf = byTitle['Pokeball Hunt']!;
+    expect(golf.locationKey, 'mini-golf');
+    expect(golf.locationDisplayName, 'Mini-golf');
+
+    final canopy = byTitle['Color Wars']!;
+    expect(canopy.locationKey, 'picnic-tables');
+    expect(canopy.locationDisplayName, 'Canopy');
+
+    // No hint, no matching header → unmatched, keeps "Outdoors" column label.
+    final nature = byTitle['Nature Run / Walk']!;
+    expect(nature.locationKey, isNull);
+    expect(nature.locationDisplayName, 'Outdoors');
+  });
+
+  test('time-in-title range overrides merge/stretch duration', () {
+    const rect = NormalizedRect(x: 0, y: 0, w: 0.05, h: 0.05);
+    final locations = [
+      VenueLocation(
+        key: 'archery',
+        displayName: 'Archery Field',
+        rect: rect,
+      ),
+    ];
+
+    // parseGrid: Archery Field is a hint under Outdoors; the sheet cell
+    // says "Archery 2-6 PM" — the range overrides both start and end.
+    // Theater column is present because parseGrid locates the header row
+    // by finding "Theater" in column 1.
+    final rows = <List<String>>[
+      ['', 'Theater', 'Outdoors'],
+      ['Friday', '', ''],
+      ['1 PM', '', ''],
+      ['2 PM', '', 'Archery 2-6 PM (Archery Field)'],
+    ];
+    final parser = CsvScheduleParser(
+      locations,
+      eventThursday: DateTime(2026, 7, 2),
+    );
+    final events = parser.parseGrid(rows, const []);
+    final archery = events.firstWhere((e) => e.title == 'Archery');
+
+    expect(archery.startTime, DateTime(2026, 7, 3, 14));
+    expect(archery.endTime, DateTime(2026, 7, 3, 18));
+    expect(archery.locationKey, 'archery');
+    expect(archery.locationDisplayName, 'Archery Field');
+  });
+
+  test('bare HH:MM start shifts start; end stays merge/stretch-derived', () {
+    // "Werewolf 8:30" in the Theater at 8 PM should start at 20:30. No end
+    // in the title → keep merge-derived (or stretch-to-next) end.
+    final rows = <List<String>>[
+      ['', 'Theater'],
+      ['Friday', ''],
+      ['8 PM', 'Werewolf 8:30'],
+      ['9 PM', 'Karaoke'],
+    ];
+    final parser = CsvScheduleParser(
+      const <VenueLocation>[],
+      eventThursday: DateTime(2026, 7, 2),
+    );
+    final events = parser.parseGrid(rows, const []);
+    final wolf = events.firstWhere((e) => e.title == 'Werewolf');
+    expect(wolf.startTime, DateTime(2026, 7, 3, 20, 30));
+    // End = start-of-1-hour-block = 21:00, still after 20:30 → kept.
+    expect(wolf.endTime, DateTime(2026, 7, 3, 21));
+  });
+
+  test('cross-midnight range rolls the end to the next day', () {
+    final rows = <List<String>>[
+      ['', 'Theater'],
+      ['Friday', ''],
+      ['10 PM', 'Late Show 10 PM - 1 AM'],
+    ];
+    final parser = CsvScheduleParser(
+      const <VenueLocation>[],
+      eventThursday: DateTime(2026, 7, 2),
+    );
+    final events = parser.parseGrid(rows, const []);
+    final show = events.firstWhere((e) => e.title == 'Late Show');
+    expect(show.startTime, DateTime(2026, 7, 3, 22));
+    expect(show.endTime, DateTime(2026, 7, 4, 1));
+  });
+
+  test('regression: outdoors hint without a time still parses cleanly', () {
+    const rect = NormalizedRect(x: 0, y: 0, w: 0.05, h: 0.05);
+    final locations = [
+      VenueLocation(
+        key: 'recreation-field',
+        displayName: 'Recreation Field',
+        aliases: const ['Rec Field'],
+        rect: rect,
+      ),
+    ];
+    final rows = <List<String>>[
+      ['', 'Theater', 'Outdoors'],
+      ['Friday', '', ''],
+      ['Noon', '', 'Beer Croquet (Rec Field)'],
+    ];
+    final parser = CsvScheduleParser(
+      locations,
+      eventThursday: DateTime(2026, 7, 2),
+    );
+    final events = parser.parseGrid(rows, const []);
+    final beer = events.firstWhere((e) => e.title == 'Beer Croquet');
+    expect(beer.startTime, DateTime(2026, 7, 3, 12));
+    expect(beer.endTime, DateTime(2026, 7, 3, 13));
+    expect(beer.locationKey, 'recreation-field');
+    expect(beer.locationDisplayName, 'Rec Field');
   });
 
   test('sibling columns fan into one pin via aliases', () {
