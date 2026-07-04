@@ -970,7 +970,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
         child: _CartMarker(cart: cart),
       ));
 
-      final labelText = cart.displayName ?? 'Cart';
+      final driver = cart.driverName?.trim();
+      final labelText =
+          (driver != null && driver.isNotEmpty) ? driver : (cart.displayName ?? 'Cart');
       final sz = _labelSize(labelText);
       final chipW = sz.width + 16;
       final chipH = sz.height + 8;
