@@ -23,6 +23,7 @@
     "key": "gaming",
     "displayName": "Main Gaming",
     "aliases": [
+      "Gaming",
       "RPG Rooms (Gaming Building)",
       "Video Gaming (Gaming Building Classroom 2)",
       "RPG Room 1",
@@ -62,6 +63,10 @@
   {
     "key": "morrison-dorm",
     "displayName": "Morrison Dorm",
+    "aliases": [
+      "Lower Morrison Dorm",
+      "Upper Morrison Dorm"
+    ],
     "rect": {
       "x": 0.32830976166522285,
       "y": 0.41156095585033176,

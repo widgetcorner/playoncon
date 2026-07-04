@@ -418,10 +418,9 @@ class CsvScheduleParser {
   /// strip from the title.
   ({VenueLocation loc, String? hintDisplay, String? hintFullMatch})?
       _resolveLocation(String header, String rawCell) {
-    final direct = _byHeader[header.toLowerCase()];
-    if (direct != null) {
-      return (loc: direct, hintDisplay: null, hintFullMatch: null);
-    }
+    // A parenthesized title hint that matches a known pin wins over the
+    // column header. Lets an author say "Apprentice Party (Lower Morrison
+    // Dorm)" in the Lodge column and have the map link point to the dorm.
     for (final m in _hintRe.allMatches(rawCell)) {
       final raw = m.group(1)!;
       final norm = _normalizeHint(raw);
@@ -434,6 +433,10 @@ class CsvScheduleParser {
           hintFullMatch: m.group(0),
         );
       }
+    }
+    final direct = _byHeader[header.toLowerCase()];
+    if (direct != null) {
+      return (loc: direct, hintDisplay: null, hintFullMatch: null);
     }
     return null;
   }

@@ -926,25 +926,31 @@ class _MapBodyState extends ConsumerState<_MapBody>
       }
     }
 
-    final children = <Widget>[];
+    // Build the "you are here" dot widget (if projectable + on-map). Rendered
+    // above labels but below pins so a POI chip can never hide the user's
+    // location. If a pin sits directly on the dot, the pin wins — it carries
+    // more info at that spot than a bare dot.
+    Widget? dotWidget;
     if (dotNorm != null) {
       final c = _project(dotNorm.dx, dotNorm.dy);
       if (c.dx >= -margin &&
           c.dx <= cw + margin &&
           c.dy >= -margin &&
           c.dy <= ch + margin) {
-        children.add(Positioned(
+        dotWidget = Positioned(
           left: c.dx - 20,
           top: c.dy - 20,
           width: 40,
           height: 40,
           child: const IgnorePointer(child: _LocationDot()),
-        ));
+        );
       }
     }
-    children
-      ..addAll(lowerLabels)
-      ..addAll(lowerPins);
+
+    final children = <Widget>[];
+    children.addAll(lowerLabels);
+    if (dotWidget != null) children.add(dotWidget);
+    children.addAll(lowerPins);
 
     for (final cart in carts.values) {
       final norm = MapGeoReference.instance.project(cart.lat, cart.lng);
@@ -962,6 +968,20 @@ class _MapBodyState extends ConsumerState<_MapBody>
         width: 28,
         height: 28,
         child: _CartMarker(cart: cart),
+      ));
+
+      final labelText = cart.displayName ?? 'Cart';
+      final sz = _labelSize(labelText);
+      final chipW = sz.width + 16;
+      final chipH = sz.height + 8;
+      const rad = 14.0;
+      const gap = 5.0;
+      final labelLeftSide = norm.dx > 0.62;
+      final left = labelLeftSide ? c.dx - rad - gap - chipW : c.dx + rad + gap;
+      children.add(Positioned(
+        left: left,
+        top: c.dy - chipH / 2,
+        child: IgnorePointer(child: _CartLabel(text: labelText)),
       ));
     }
 
@@ -1732,9 +1752,41 @@ class _NameDialogState extends State<_NameDialog> {
   }
 }
 
+/// Always-visible chip rendered next to a cart marker so the cart's name reads
+/// at a glance without tapping. Styled in the cart yellow to distinguish from
+/// POI labels (white).
+class _CartLabel extends StatelessWidget {
+  final String text;
+  const _CartLabel({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFC107),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1F3A2818), blurRadius: 2),
+        ],
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+        style: _kLabelTextStyle.copyWith(color: const Color(0xFF2E4E2E)),
+      ),
+    );
+  }
+}
+
 /// Live golf-cart marker on the venue map. Distinct from venue category pins
-/// (color + glyph) and from the blue "you are here" dot. Tapping/long-pressing
-/// reveals the cart name + driver, when known.
+/// (color + glyph) and from the blue "you are here" dot. Name is rendered
+/// beside the marker via `_CartLabel` (always visible); tapping the circle
+/// additionally reveals the driver name when known (tooltip has
+/// `triggerMode: tap` because the Material default is long-press on mobile).
 class _CartMarker extends StatelessWidget {
   final CartPosition cart;
   const _CartMarker({required this.cart});
@@ -1747,6 +1799,7 @@ class _CartMarker extends StatelessWidget {
         : '$label — ${cart.driverName}';
     return Tooltip(
       message: tip,
+      triggerMode: TooltipTriggerMode.tap,
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
