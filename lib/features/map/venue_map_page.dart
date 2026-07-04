@@ -23,6 +23,12 @@ import '../../theme/poc_theme.dart';
 import 'venue_map_data.dart';
 
 const _mapAsset = AssetImage('assets/images/venue-map.png');
+// Dark variant generated from the light artwork by scripts/make-dark-map.py —
+// identical geometry, so hotspot rects and the GPS affine fit apply unchanged.
+const _mapAssetDark = AssetImage('assets/images/venue-map-dark.png');
+
+AssetImage _mapAssetFor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark ? _mapAssetDark : _mapAsset;
 
 /// Scale used by the "Detail" preset and the deep-link focus animation.
 const double _kDetailScale = 2.0;
@@ -827,7 +833,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
             top: dy,
             width: w,
             height: h,
-            child: const Image(image: _mapAsset, fit: BoxFit.fill),
+            child: Image(image: _mapAssetFor(context), fit: BoxFit.fill),
           ),
           for (final loc in _draft)
             _HotspotWidget(
@@ -885,7 +891,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
                 top: _boardDy,
                 width: _boardW,
                 height: _boardH,
-                child: const Image(image: _mapAsset, fit: BoxFit.fill),
+                child: Image(image: _mapAssetFor(context), fit: BoxFit.fill),
               ),
             ]),
           ),
@@ -943,6 +949,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
     Map<String, CartPosition> carts,
   ) {
     const margin = 64.0;
+    final brightness = Theme.of(context).brightness;
 
     // Project + cull pins to those near the viewport.
     final placements = <_PinPlacement>[];
@@ -960,7 +967,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
       placements.add(_PinPlacement(
         location: loc,
         meta: meta,
-        color: categoryMetaFor(meta.category).color,
+        color: categoryMetaFor(meta.category).colorFor(brightness),
         center: center,
         labelLeft: ncx > 0.62,
         selected: _selectedVenueKey == loc.key,
@@ -1144,8 +1151,6 @@ class _LocationDot extends StatefulWidget {
 
 class _LocationDotState extends State<_LocationDot>
     with SingleTickerProviderStateMixin {
-  static const _blue = Color(0xFF2B6CB0);
-
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 2),
@@ -1166,12 +1171,13 @@ class _LocationDotState extends State<_LocationDot>
       _pulse.stop();
     }
 
+    final blue = PocPalette.of(context).youAreHere;
     final dot = Container(
       width: 15,
       height: 15,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: _blue,
+        color: blue,
         border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
           BoxShadow(
@@ -1200,7 +1206,7 @@ class _LocationDotState extends State<_LocationDot>
                 height: 15 + 25 * t,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _blue.withValues(alpha: 0.30 * (1 - t)),
+                  color: blue.withValues(alpha: 0.30 * (1 - t)),
                 ),
               );
             },
@@ -1312,13 +1318,14 @@ class _PinLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = PocPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.white.withValues(alpha: 0.9),
+        color: selected ? color : pal.labelChipBackground,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: selected ? Colors.white : const Color(0x668E7E63),
+          color: selected ? Colors.white : pal.labelChipBorder,
         ),
         boxShadow: const [
           BoxShadow(color: Color(0x1F3A2818), blurRadius: 2),
@@ -1330,7 +1337,7 @@ class _PinLabel extends StatelessWidget {
         softWrap: false,
         overflow: TextOverflow.clip,
         style: _kLabelTextStyle.copyWith(
-          color: selected ? Colors.white : PocColors.ink,
+          color: selected ? Colors.white : pal.labelChipText,
         ),
       ),
     );
@@ -1354,11 +1361,13 @@ class _MapControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = PocPalette.of(context);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Material(
-          color: Colors.white,
+          color: pal.controlSurface,
           borderRadius: BorderRadius.circular(999),
           elevation: 3,
           shadowColor: const Color(0x593A2818),
@@ -1373,15 +1382,15 @@ class _MapControls extends StatelessWidget {
                   Icon(
                     overview ? Icons.zoom_in : Icons.zoom_out_map,
                     size: 16,
-                    color: PocColors.saddleDark,
+                    color: pal.controlIcon,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     overview ? 'Detail' : 'Overview',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
-                      color: PocColors.ink,
+                      color: onSurface,
                     ),
                   ),
                 ],
@@ -1391,7 +1400,7 @@ class _MapControls extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Material(
-          color: PocColors.forest,
+          color: pal.fabBackground,
           shape: const CircleBorder(),
           elevation: 3,
           shadowColor: const Color(0x593A2818),
@@ -1403,7 +1412,7 @@ class _MapControls extends StatelessWidget {
               height: 44,
               child: Icon(
                 locationOn ? Icons.my_location : Icons.location_searching,
-                color: Colors.white,
+                color: pal.fabForeground,
                 size: 22,
               ),
             ),
@@ -1432,15 +1441,17 @@ class _VenueInfoSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cat = categoryMetaFor(meta.category);
+    final pal = PocPalette.of(context);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Material(
-      color: Colors.white,
+      color: pal.sheetSurface,
       borderRadius: BorderRadius.circular(16),
       elevation: 6,
       shadowColor: const Color(0x593A2818),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFC8B996)),
+          border: Border.all(color: pal.sheetBorder),
         ),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(
@@ -1452,7 +1463,7 @@ class _VenueInfoSheet extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: cat.color,
+                    color: cat.colorFor(Theme.of(context).brightness),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(meta.icon, color: Colors.white, size: 22),
@@ -1467,20 +1478,20 @@ class _VenueInfoSheet extends StatelessWidget {
                         location.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: PocColors.ink,
+                          color: onSurface,
                         ),
                       ),
                       Text(
                         meta.blurb,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: PocColors.inkSoft,
+                          color: pal.textSoft,
                         ),
                       ),
                     ],
@@ -1489,7 +1500,7 @@ class _VenueInfoSheet extends StatelessWidget {
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   iconSize: 18,
-                  color: PocColors.inkSoft,
+                  color: pal.textSoft,
                   tooltip: 'Close',
                   onPressed: onClose,
                   icon: const Icon(Icons.close),
@@ -1497,10 +1508,10 @@ class _VenueInfoSheet extends StatelessWidget {
               ],
             ),
             if (status != null) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                child:
-                    Divider(height: 1, thickness: 1, color: Color(0xFFD8CBA8)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                    height: 1, thickness: 1, color: pal.sheetDivider),
               ),
               Align(
                 alignment: Alignment.centerLeft,
@@ -1520,14 +1531,15 @@ class _StatusLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = PocPalette.of(context);
     final s = status;
     if (s == null) {
-      return const Text(
+      return Text(
         'Open all weekend',
         style: TextStyle(
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: PocColors.inkSoft,
+          color: pal.textSoft,
         ),
       );
     }
@@ -1543,10 +1555,10 @@ class _StatusLine extends StatelessWidget {
             height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: PocColors.forest,
+              color: pal.accent,
               boxShadow: [
                 BoxShadow(
-                  color: PocColors.forest.withValues(alpha: 0.18),
+                  color: pal.accent.withValues(alpha: 0.18),
                   blurRadius: 0,
                   spreadRadius: 3,
                 ),
@@ -1554,7 +1566,7 @@ class _StatusLine extends StatelessWidget {
             ),
           )
         else
-          const Icon(Icons.schedule, size: 14, color: PocColors.saddleDark),
+          Icon(Icons.schedule, size: 14, color: pal.controlIcon),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
@@ -1564,7 +1576,7 @@ class _StatusLine extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: s.isNow ? PocColors.forestDark : PocColors.inkSoft,
+              color: s.isNow ? pal.brand : pal.textSoft,
             ),
           ),
         ),

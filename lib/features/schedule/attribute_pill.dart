@@ -23,6 +23,7 @@ class AttributePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = PocPalette.of(context);
     final padH = dense ? 8.0 : 10.0;
     final padV = dense ? 2.0 : 4.0;
     final fontSize = dense ? 11.0 : 12.0;
@@ -32,15 +33,15 @@ class AttributePill extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
-        color: PocColors.creamSoft,
-        border: Border.all(color: PocColors.saddle, width: 0.7),
+        color: pal.pillBackground,
+        border: Border.all(color: pal.pillBorder, width: 0.7),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         display,
         style: TextStyle(
           fontSize: fontSize,
-          color: PocColors.inkSoft,
+          color: pal.pillText,
           fontWeight: FontWeight.w600,
         ),
       ),

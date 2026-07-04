@@ -15,6 +15,8 @@ class PlayOnConApp extends StatelessWidget {
     return MaterialApp(
       title: 'Play On Con',
       theme: PocTheme.light(),
+      darkTheme: PocTheme.dark(),
+      themeMode: ThemeMode.system,
       home: const RootShell(),
     );
   }

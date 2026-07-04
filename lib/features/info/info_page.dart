@@ -165,7 +165,7 @@ class _LogoHeader extends StatelessWidget {
               fontSize: 22,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: PocColors.forestDark,
+              color: PocPalette.of(context).brand,
             ),
           ),
           const SizedBox(height: 6),
@@ -203,13 +203,14 @@ class BetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = PocPalette.of(context).brand;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: PocColors.forestDark.withValues(alpha: 0.10),
+        color: brand.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: PocColors.forestDark.withValues(alpha: 0.30),
+          color: brand.withValues(alpha: 0.30),
         ),
       ),
       child: Text(
@@ -218,7 +219,7 @@ class BetaPill extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.2,
-          color: PocColors.forestDark,
+          color: brand,
         ),
       ),
     );
@@ -279,16 +280,17 @@ class _CountdownCardState extends State<_CountdownCard> {
     final hours = _remaining.inHours % 24;
     final minutes = _remaining.inMinutes % 60;
     final seconds = _remaining.inSeconds % 60;
+    final pal = PocPalette.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Card(
         elevation: 0,
-        color: PocColors.forestDark.withValues(alpha: 0.06),
+        color: pal.brand.withValues(alpha: 0.06),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
-            color: PocColors.forestDark.withValues(alpha: 0.16),
+            color: pal.brand.withValues(alpha: 0.16),
           ),
         ),
         child: Padding(
@@ -300,7 +302,7 @@ class _CountdownCardState extends State<_CountdownCard> {
                 style: TextStyle(
                   fontSize: 13,
                   letterSpacing: 0.5,
-                  color: PocColors.inkSoft,
+                  color: pal.textSoft,
                 ),
               ),
               const SizedBox(height: 8),
@@ -337,6 +339,7 @@ class _CountdownUnit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = PocPalette.of(context);
     final text = pad ? value.toString().padLeft(2, '0') : value.toString();
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -346,13 +349,13 @@ class _CountdownUnit extends StatelessWidget {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: PocColors.forestDark,
+            color: pal.brand,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: PocColors.inkSoft),
+          style: TextStyle(fontSize: 11, color: pal.textSoft),
         ),
       ],
     );
@@ -371,7 +374,7 @@ class _CountdownSep extends StatelessWidget {
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w600,
-          color: PocColors.forestDark.withValues(alpha: 0.5),
+          color: PocPalette.of(context).brand.withValues(alpha: 0.5),
         ),
       ),
     );

@@ -17,16 +17,20 @@ enum VenueCategory { stages, gaming, parties, outdoors, stayEat }
 class VenueCategoryMeta {
   final String label;
   final Color color;
+  final Color darkColor; // one step lighter, for the dark map ground
   final IconData icon;
-  const VenueCategoryMeta(this.label, this.color, this.icon);
+  const VenueCategoryMeta(this.label, this.color, this.darkColor, this.icon);
+
+  Color colorFor(Brightness brightness) =>
+      brightness == Brightness.dark ? darkColor : color;
 }
 
 const Map<VenueCategory, VenueCategoryMeta> kCategoryMeta = {
-  VenueCategory.stages:   VenueCategoryMeta('Stages',     Color(0xFF2D5E3E), Icons.theater_comedy),
-  VenueCategory.gaming:   VenueCategoryMeta('Gaming',     Color(0xFF8B6F47), Icons.casino),
-  VenueCategory.parties:  VenueCategoryMeta('Parties',    Color(0xFFB46A3F), Icons.celebration),
-  VenueCategory.outdoors: VenueCategoryMeta('Outdoors',   Color(0xFF5E7D3A), Icons.park),
-  VenueCategory.stayEat:  VenueCategoryMeta('Stay & Eat', Color(0xFF6B5232), Icons.restaurant),
+  VenueCategory.stages:   VenueCategoryMeta('Stages',     Color(0xFF2D5E3E), Color(0xFF3E7A52), Icons.theater_comedy),
+  VenueCategory.gaming:   VenueCategoryMeta('Gaming',     Color(0xFF8B6F47), Color(0xFFA08454), Icons.casino),
+  VenueCategory.parties:  VenueCategoryMeta('Parties',    Color(0xFFB46A3F), Color(0xFFC97F52), Icons.celebration),
+  VenueCategory.outdoors: VenueCategoryMeta('Outdoors',   Color(0xFF5E7D3A), Color(0xFF7A9A52), Icons.park),
+  VenueCategory.stayEat:  VenueCategoryMeta('Stay & Eat', Color(0xFF6B5232), Color(0xFF8A6E48), Icons.restaurant),
 };
 
 class VenueMeta {

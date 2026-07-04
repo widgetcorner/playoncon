@@ -39,6 +39,10 @@ lib/
     map_georeference.dart             GPS → normalized image coords (affine fit to control points)
     network_monitor.dart              connectivity stream
   app_navigation.dart                 selectedTab + mapFocus providers ("Show on map")
+  theme/poc_theme.dart                light + dark ThemeData ("campground at night") and the
+                                      PocPalette ThemeExtension for app-specific color roles
+                                      (pills, map chrome, brand accents) — widgets read
+                                      PocPalette.of(context), never PocColors statics
   features/
     schedule/  schedule_page (All Sessions / My Schedule tabs), event_detail_page,
                attribute_pill, save_event_action (save + reminder dialog)
@@ -46,6 +50,8 @@ lib/
     info/      info_page (Discord, last-sync, refresh)
 assets/
   images/venue-map.png                annotated venue diagram
+  images/venue-map-dark.png           dark variant, generated — do not hand-edit; rerun
+                                      scripts/make-dark-map.py after changing the light map
   data/locations.json                 bundled hotspot rects (normalized 0–1)
   data/fallback-schedule.json         used on first launch with no network
 test/
@@ -249,6 +255,13 @@ in code** — add a column header or hint variant there, no rebuild of parser lo
 Pins with no column (dorms, archery, pool amenities, etc.) are wayfinding-only.
 
 ## Constraints / things to know
+
+- Dark mode follows the OS setting (`themeMode: ThemeMode.system`; no in-app toggle).
+  Both themes derive from the same badge palette — dark's primary is the moss green the
+  light scheme uses as `inversePrimary`. Category pin colors carry a `darkColor` variant
+  in `venue_map_data.dart` (one step lighter for the dark map ground). New widget colors
+  go through `PocPalette` / `Theme.of(context).colorScheme`, not `PocColors` statics —
+  a hardcoded light-palette color will look broken for every dark-mode user.
 
 - A column resolves to exactly **one** pin, but several columns may share a pin via `aliases`
   (the Gaming building does this). `Outdoors` is the per-event exception, spread across real
