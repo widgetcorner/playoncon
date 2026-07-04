@@ -90,29 +90,39 @@ final cartPositionsProvider =
 
     if (disposed) return;
 
+    // Drivers post via `post_position`, which UPSERTs one row per cart_id
+    // (`ON CONFLICT DO UPDATE`). Postgres logical replication reports the
+    // first post as INSERT and every subsequent post as UPDATE, so we listen
+    // to both — otherwise carts would only appear on their first-ever post.
+    void handleRow(Map<String, dynamic> row) {
+      try {
+        final pos = CartPosition.fromJson(
+          row,
+          displayName: cartNames[row['cart_id'] as String?],
+        );
+        final existing = byCart[pos.cartId];
+        if (existing == null || pos.updatedAt.isAfter(existing.updatedAt)) {
+          byCart[pos.cartId] = pos;
+          emit();
+        }
+      } catch (e) {
+        debugPrint('cart_positions realtime decode failed: $e');
+      }
+    }
+
     channel = client
         .channel('public:cart_positions')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'cart_positions',
-          callback: (payload) {
-            try {
-              final row = payload.newRecord;
-              final pos = CartPosition.fromJson(
-                row,
-                displayName: cartNames[row['cart_id'] as String?],
-              );
-              final existing = byCart[pos.cartId];
-              if (existing == null ||
-                  pos.updatedAt.isAfter(existing.updatedAt)) {
-                byCart[pos.cartId] = pos;
-                emit();
-              }
-            } catch (e) {
-              debugPrint('cart_positions realtime decode failed: $e');
-            }
-          },
+          callback: (payload) => handleRow(payload.newRecord),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'cart_positions',
+          callback: (payload) => handleRow(payload.newRecord),
         )
         .subscribe();
 

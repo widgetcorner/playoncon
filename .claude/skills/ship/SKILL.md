@@ -1,6 +1,6 @@
 ---
-name: ship-android
-description: "Ship the current working-directory changes to Google Play internal testers. Bumps the +N build number in pubspec.yaml, runs scripts/build-play.sh, uploads the .aab to the Play internal track, commits the changed files + pubspec bump, pushes to remote, and writes release notes. Invoke when the user says something like 'commit and push this, add a new version number and push to android internal testers', 'ship this to Play', 'push to android testers', or any close variant. Android-only until Apple case 102924568243 unblocks TestFlight."
+name: ship
+description: "Ship the current working-directory changes to Google Play internal testers. Bumps the +N build number in pubspec.yaml, runs scripts/build-play.sh, uploads the .aab to the Play internal track, commits the changed files + pubspec bump, pushes to remote, and writes release notes. Invoke when the user says something like 'ship this', 'ship it', 'commit and push this, add a new version number and push to android internal testers', 'ship this to Play', or any close variant. Android-only for now — Apple case 102924568243 has cleared, so this can grow (or defer to flutter-store-upload for) an iOS arm."
 ---
 
 # Ship to Play internal testers (PlayOnCon)
@@ -101,6 +101,6 @@ Derive both from the commit body plus the file diff — don't invent features. I
 - **fastlane "APK specifies a version code that has already been used"** → the +N didn't get baked in; re-verify pubspec and rerun the build.
 - **fastlane "Package not found"** → someone changed the package name; the current value is `com.fuller.playoncon`.
 
-## Why Android-only
+## Why Android-only (for now)
 
-Apple case 102924568243 (individual→org migration) has the iOS cert portal locked, blocking TestFlight uploads. When that clears, this skill should grow an iOS arm — or defer to the general `flutter-store-upload` skill instead. Until then, don't attempt TestFlight from here.
+Apple case 102924568243 (individual→org migration) previously locked the iOS cert portal — that block was cleared on 2026-07-01 and TestFlight uploads work again. This skill hasn't grown an iOS arm yet, so for parallel TestFlight + Play uploads use the general `flutter-store-upload` skill instead. If invoked as-is it still ships Android-only.
