@@ -9,9 +9,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import '../../app_navigation.dart';
+import '../../config/app_config.dart';
 import '../../models/cart_position.dart';
 import '../../models/event.dart';
 import '../../models/venue_location.dart';
+import '../../services/calibration_store.dart';
 import '../../services/cart_positions_repository.dart';
 import '../../services/location_service.dart';
 import '../../services/locations_store.dart';
@@ -71,6 +73,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
   ImageStreamListener? _listener;
 
   bool _editing = false;
+  bool _calibrating = false; // debug-only "walk the venue" GPS↔hotspot capture
   late List<VenueLocation> _draft;
   String? _selectedKey; // editor-mode selection (hotspot being edited)
 
@@ -380,6 +383,84 @@ class _MapBodyState extends ConsumerState<_MapBody>
     );
   }
 
+  Future<void> _enterCalibrate() async {
+    // Kick the location stream on so we have a GPS fix ready to capture.
+    if (!_locationOn) {
+      final granted = await ensureLocationPermission();
+      if (!mounted) return;
+      if (!granted) {
+        _snack('Location is off — enable it in Settings to calibrate.');
+        return;
+      }
+      setState(() => _locationOn = true);
+    }
+    setState(() {
+      _calibrating = true;
+      _selectedVenueKey = null;
+    });
+  }
+
+  void _exitCalibrate() {
+    setState(() => _calibrating = false);
+  }
+
+  Future<void> _recordCalibrationPoint(VenueLocation loc) async {
+    final pos = ref.read(currentPositionProvider).value;
+    if (pos == null) {
+      _snack('Waiting on a GPS fix — try again in a moment.');
+      return;
+    }
+    final point = CalibrationPoint(
+      lat: pos.latitude,
+      lng: pos.longitude,
+      x: loc.rect.x + loc.rect.w / 2,
+      y: loc.rect.y + loc.rect.h / 2,
+      hotspotKey: loc.key,
+      accuracyMeters: pos.accuracy,
+      capturedAt: DateTime.now(),
+    );
+    await ref.read(calibrationPointsProvider.notifier).add(point);
+    if (!mounted) return;
+    _snack(
+      'Recorded ${loc.displayName} '
+      '(±${pos.accuracy.toStringAsFixed(1)}m)',
+    );
+  }
+
+  Future<void> _copyCalibrationDart() async {
+    final points = ref.read(calibrationPointsProvider);
+    if (points.isEmpty) {
+      _snack('No calibration points yet.');
+      return;
+    }
+    await Clipboard.setData(
+      ClipboardData(text: calibrationPointsAsDart(points)),
+    );
+    if (!mounted) return;
+    _snack('${points.length} calibration points copied as Dart snippet.');
+  }
+
+  Future<void> _undoCalibration() async {
+    final n = ref.read(calibrationPointsProvider).length;
+    if (n == 0) return;
+    await ref.read(calibrationPointsProvider.notifier).undo();
+    if (!mounted) return;
+    _snack('Removed last calibration point.');
+  }
+
+  Future<void> _clearCalibration() async {
+    final n = ref.read(calibrationPointsProvider).length;
+    if (n == 0) return;
+    final ok = await _confirm(
+      title: 'Clear all calibration points?',
+      message: 'Deletes all $n recorded points from this device.',
+      confirmLabel: 'Clear',
+      destructive: true,
+    );
+    if (!ok) return;
+    await ref.read(calibrationPointsProvider.notifier).clear();
+  }
+
   void _addHotspot() async {
     final result = await showDialog<({String key, String displayName})>(
       context: context,
@@ -564,22 +645,39 @@ class _MapBodyState extends ConsumerState<_MapBody>
         ? const <String, CartPosition>{}
         : (ref.watch(cartPositionsProvider).valueOrNull ?? const {});
 
+    final calibrationCount = ref.watch(calibrationPointsProvider).length;
+
+    String appBarTitle;
+    if (_editing) {
+      appBarTitle = 'Edit Hotspots';
+    } else if (_calibrating) {
+      appBarTitle = 'Calibrate ($calibrationCount)';
+    } else {
+      appBarTitle = 'Venue Map';
+    }
+
+    final tinted = _editing || _calibrating;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_editing ? 'Edit Hotspots' : 'Venue Map'),
-        backgroundColor: _editing
-            ? Theme.of(context).colorScheme.tertiaryContainer
-            : null,
-        foregroundColor: _editing
-            ? Theme.of(context).colorScheme.onTertiaryContainer
-            : null,
+        title: Text(appBarTitle),
+        backgroundColor:
+            tinted ? Theme.of(context).colorScheme.tertiaryContainer : null,
+        foregroundColor:
+            tinted ? Theme.of(context).colorScheme.onTertiaryContainer : null,
         leading: _editing
             ? IconButton(
                 icon: const Icon(Icons.close),
                 tooltip: 'Discard changes',
                 onPressed: _cancelEdit,
               )
-            : null,
+            : (_calibrating
+                ? IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Exit calibration',
+                    onPressed: _exitCalibrate,
+                  )
+                : null),
         actions: _editing
             ? [
                 IconButton(
@@ -603,15 +701,39 @@ class _MapBodyState extends ConsumerState<_MapBody>
                   onPressed: _saveEdit,
                 ),
               ]
-            : (kDebugMode
+            : (_calibrating
                 ? [
                     IconButton(
-                      icon: const Icon(Icons.edit_location_alt_outlined),
-                      tooltip: 'Edit hotspots',
-                      onPressed: _enterEdit,
+                      icon: const Icon(Icons.undo),
+                      tooltip: 'Undo last point',
+                      onPressed: calibrationCount == 0 ? null : _undoCalibration,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy),
+                      tooltip: 'Copy _ControlPoint snippet',
+                      onPressed: calibrationCount == 0 ? null : _copyCalibrationDart,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Clear all points',
+                      onPressed: calibrationCount == 0 ? null : _clearCalibration,
                     ),
                   ]
-                : null),
+                : ((kDebugMode || AppConfig.calibrationEnabled)
+                    ? [
+                        if (kDebugMode)
+                          IconButton(
+                            icon: const Icon(Icons.edit_location_alt_outlined),
+                            tooltip: 'Edit hotspots',
+                            onPressed: _enterEdit,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.my_location),
+                          tooltip: 'Calibrate GPS ↔ map',
+                          onPressed: _enterCalibrate,
+                        ),
+                      ]
+                    : null)),
       ),
       body: SafeArea(
         top: false,
@@ -627,18 +749,32 @@ class _MapBodyState extends ConsumerState<_MapBody>
                   Positioned.fill(
                       child: _buildViewerBoard(imageRatio, dotNorm, carts)),
                   // Controls: Overview/Detail pill + recenter FAB (top-right).
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: _MapControls(
-                      overview: _overview,
-                      locationOn: _locationOn,
-                      onToggleOverview: _toggleOverview,
-                      onLocate: _onLocatePressed,
+                  // Hidden in calibration mode (the HUD takes over the top).
+                  if (!_calibrating)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: _MapControls(
+                        overview: _overview,
+                        locationOn: _locationOn,
+                        onToggleOverview: _toggleOverview,
+                        onLocate: _onLocatePressed,
+                      ),
                     ),
-                  ),
+                  // Calibration HUD: live GPS + instructions (top of screen).
+                  if (_calibrating)
+                    Positioned(
+                      top: 12,
+                      left: 10,
+                      right: 10,
+                      child: _CalibrationHud(
+                        position: ref.watch(currentPositionProvider).value,
+                        pointCount: calibrationCount,
+                      ),
+                    ),
                   // Info sheet (bottom) when a pin is selected (Detail only).
-                  if (selectedLoc != null && !_overview)
+                  // Hidden in calibration mode — pins record instead of opening.
+                  if (!_calibrating && selectedLoc != null && !_overview)
                     Positioned(
                       left: 10,
                       right: 10,
@@ -899,7 +1035,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
           color: p.color,
           icon: p.meta.icon,
           selected: p.selected,
-          onTap: () => _selectVenue(p.location),
+          onTap: () => _calibrating
+              ? _recordCalibrationPoint(p.location)
+              : _selectVenue(p.location),
         ),
       );
       Widget? labelWidget;
@@ -1820,6 +1958,66 @@ class _CartMarker extends StatelessWidget {
             Icons.electric_rickshaw,
             size: 16,
             color: Color(0xFF2E4E2E),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Top-of-screen HUD shown in debug calibration mode: live GPS + instructions.
+class _CalibrationHud extends StatelessWidget {
+  final Position? position;
+  final int pointCount;
+  const _CalibrationHud({required this.position, required this.pointCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final pos = position;
+    final gpsLine = pos == null
+        ? 'Waiting on GPS fix…'
+        : '${pos.latitude.toStringAsFixed(5)}, '
+            '${pos.longitude.toStringAsFixed(5)}  '
+            '±${pos.accuracy.toStringAsFixed(1)}m';
+    return Material(
+      color: scheme.tertiaryContainer.withValues(alpha: 0.95),
+      elevation: 3,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: DefaultTextStyle(
+          style: TextStyle(
+            color: scheme.onTertiaryContainer,
+            fontSize: 12,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.gps_fixed,
+                    size: 14,
+                    color: scheme.onTertiaryContainer,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      gpsLine,
+                      style: const TextStyle(
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  Text('$pointCount pts'),
+                ],
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Stand at a landmark, then tap its pin to record.',
+              ),
+            ],
           ),
         ),
       ),

@@ -25,12 +25,26 @@ class MapGeoReference {
 
   static final MapGeoReference instance = _fit();
 
+  // Walked and captured on-site 2026-07-04 in profile-mode calibration.
+  // 17 points spread across the whole venue; typical GPS accuracy ±4.7m.
   static const _points = <_ControlPoint>[
-    _ControlPoint(33.16675, -86.49314, 0.5514, 0.3808), // Pool (center)
-    _ControlPoint(33.16757, -86.49599, 0.0692, 0.5615), // Main Gaming (NW)
-    _ControlPoint(33.16742, -86.49389, 0.3911, 0.3557), // Theater (N-center)
-    _ControlPoint(33.16710, -86.49193, 0.6674, 0.2098), // Dock & Canoes (E)
-    _ControlPoint(33.16556, -86.49074, 0.8964, 0.2822), // Sand Volleyball (SE)
+    _ControlPoint(33.16756, -86.49581, 0.0693, 0.5616), // gaming
+    _ControlPoint(33.16738, -86.49587, 0.0900, 0.6541), // food-truck
+    _ControlPoint(33.16585, -86.49495, 0.4517, 0.6838), // chapel
+    _ControlPoint(33.16450, -86.49537, 0.5692, 0.8746), // cottages
+    _ControlPoint(33.16590, -86.49190, 0.8527, 0.4075), // mini-golf
+    _ControlPoint(33.16602, -86.49115, 0.8244, 0.2768), // recreation-field
+    _ControlPoint(33.16557, -86.49076, 0.8964, 0.2822), // sand-volleyball
+    _ControlPoint(33.16540, -86.49057, 0.9525, 0.2736), // archery
+    _ControlPoint(33.16705, -86.49201, 0.6674, 0.2098), // dock-canoes
+    _ControlPoint(33.16767, -86.49233, 0.5985, 0.1308), // lakeview-fire-pit
+    _ControlPoint(33.16654, -86.49346, 0.5836, 0.4369), // picnic-tables
+    _ControlPoint(33.16662, -86.49366, 0.5425, 0.4960), // mayfield
+    _ControlPoint(33.16672, -86.49413, 0.4294, 0.4935), // alfa-dorm
+    _ControlPoint(33.16704, -86.49432, 0.3498, 0.4569), // morrison-dorm
+    _ControlPoint(33.16739, -86.49395, 0.3911, 0.3557), // theater
+    _ControlPoint(33.16759, -86.49382, 0.3364, 0.3027), // hotel-rooms
+    _ControlPoint(33.16757, -86.49457, 0.2073, 0.3930), // cafeteria
   ];
 
   /// Projects a GPS coordinate to normalized image coords, or null when the

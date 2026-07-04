@@ -77,6 +77,13 @@ class AppConfig {
       String.fromEnvironment('POC_APP_VERSION');
   static bool get hasAppVersion => appVersion.isNotEmpty;
 
+  /// When true, the venue-map calibration walk mode is available even in
+  /// profile/release builds. Debug builds always expose it via kDebugMode
+  /// regardless of this flag. Set via `--dart-define=POC_CALIBRATION=1` on
+  /// a profile build so you can walk the venue with the phone unplugged.
+  static const bool calibrationEnabled =
+      bool.fromEnvironment('POC_CALIBRATION', defaultValue: false);
+
   static bool get hasScheduleUrl => scheduleCsvUrl.isNotEmpty;
   static bool get hasScheduleViewUrl => scheduleViewUrl.isNotEmpty;
   static bool get hasDiscordUrl => discordInviteUrl.isNotEmpty;
