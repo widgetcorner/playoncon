@@ -14,19 +14,22 @@ Store credentials come from the `store-upload-credentials` memory — don't re-a
 - `git status --short` shows only intentional changes (no stray files you don't recognize — if you see any, stop and ask).
 - `scripts/.env.local` exists (both build scripts source it).
 - `~/.playconsole/playoncon-publisher.json` exists.
-- `~/.appstoreconnect/private_keys/AuthKey_8JG466Z38K.p8` exists.
+- `~/.appstoreconnect/private_keys/AuthKey_<key-id>.p8` exists.
 
 If any debug `flutter run` task is still running in the background, `TaskStop` it before building — Gradle and `flutter run` both share `.dart_tool` and will collide.
 
-## Step 1 — Bump build number
+## Step 1 — Set the version
 
-Read `pubspec.yaml`, find the `version:` line, increment the integer after the `+`:
+The version string is `YYYY.M.D+N` — marketing = **today's date**, build number = monotonically incrementing across ships (never resets on a date change). Run `date +%Y.%-n.%-d` to get today's date in the exact format (no zero-padding on month/day; `2026.7.4`, not `2026.07.04`).
 
-```
-version: 2026.7.2+22  →  version: 2026.7.2+23
-```
+Read `pubspec.yaml`, then:
 
-Never bump the marketing portion (`2026.7.2`) unless the user explicitly asks — that's for user-visible releases.
+- **If the marketing date matches today**: increment `+N`.
+  `version: 2026.7.4+25` → `version: 2026.7.4+26`
+- **If the marketing date is in the past** (a day or more old): set marketing to today's date AND increment `+N`.
+  `version: 2026.7.2+24` → `version: 2026.7.4+25`
+
+The `+N` build number is monotonic across the whole app — TestFlight and Play both require it to strictly increase, regardless of whether the marketing version changed. Never reset it. Never bump marketing to a *future* date, and never bump marketing backward.
 
 ## Step 2 — Build both artifacts (sequentially)
 
@@ -54,8 +57,8 @@ Different APIs, no shared state — dispatch both uploads in the same message as
 xcrun altool --upload-app \
   --type ios \
   -f build/ios/ipa/*.ipa \
-  --apiKey 8JG466Z38K \
-  --apiIssuer 69a6de72-b803-47e3-e053-5b8c7c11a4d1
+  --apiKey <from store-upload-credentials memory> \
+  --apiIssuer <from store-upload-credentials memory>
 ```
 
 Long-running (~2 min normal, up to 25 min if Apple's API is flaky — altool retries on transient 500s, don't kill it). Give this background task a **20-minute timeout**. Success line:
@@ -127,7 +130,7 @@ Derive both from the commit body plus the file diff — don't invent features. I
 - **Debug run still holds the build cache** → TaskStop the flutter run task before invoking either build script.
 - **fastlane "APK specifies a version code that has already been used"** → the +N didn't get baked in; re-verify pubspec and rerun the build.
 - **fastlane "Package not found"** → someone changed the package name; the current value is `com.fuller.playoncon`.
-- **altool "Invalid Pre-Release Train. The train version 'X.Y.Z' is closed"** (error 90186) → Apple has closed that marketing-version train. Bump the marketing portion of `pubspec.yaml` (e.g. `2026.7.2` → `2026.7.3`), rebuild both, re-upload both. Ask before doing this — it's an owner-visible version change.
+- **altool "Invalid Pre-Release Train. The train version 'X.Y.Z' is closed"** (error 90186) → Apple has closed that marketing-version train. Since the skill sets marketing to today's date on every ship, this only fires when re-shipping on the same day after Apple has already closed today's train. Bump marketing forward by one day (`2026.7.4` → `2026.7.5`) and rebuild both — flag this to the user in the commit message since it's an owner-visible version drift from the actual calendar date.
 - **altool 401 / "App not found"** → wrong ASC Key ID + Issuer ID pair, or the `.p8` file is missing. The credentials memory has the correct values.
 - **One store succeeded, the other failed** → do NOT commit yet. Fix the failure, re-upload only the failed store using the already-built artifact (no rebuild needed unless the artifact is stale), then commit once both are up.
 - **iOS export-compliance halts the build** → `ITSAppUsesNonExemptEncryption=false` should already be set in `ios/Runner/Info.plist`; if it's missing, add it before rebuilding.
