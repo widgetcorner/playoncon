@@ -511,6 +511,45 @@ void main() {
       expect(rocky.endTime, DateTime(2026, 7, 4, 1));
     });
 
+    test('multi-line cell with a line-0 time range keeps its title and '
+        'range (Boat On)', () {
+      // Wes-reported: "Boat On! 12-2 PM\n(Dock & Canoes)" in the Outdoors
+      // column vanished from the app. The line-0 range's internal hyphen
+      // ("12-2") mimicked the "Label - Time" sub-schedule delimiter, so the
+      // title collapsed to line 1 "(Dock & Canoes)" and 12-2 became a bogus
+      // sub-event. Line 0 must stay the title; the range must set start/end;
+      // the parenthetical must still resolve to the Dock & Canoes pin.
+      const rect = NormalizedRect(x: 0, y: 0, w: 0.05, h: 0.05);
+      final locations = [
+        VenueLocation(
+          key: 'dock-canoes',
+          displayName: 'Dock & Canoes',
+          rect: rect,
+        ),
+      ];
+      // Theater in col 1 is how parseGrid locates the header row; Boat On
+      // lives in the Outdoors column beside it.
+      final rows = <List<String>>[
+        ['', 'Theater', 'Outdoors'],
+        ['Saturday', '', ''],
+        ['12 PM', '', 'Boat On! 12-2 PM\n(Dock & Canoes)'],
+        ['1 PM', '', ''],
+        ['2 PM', '', ''],
+      ];
+
+      final parser =
+          CsvScheduleParser(locations, eventThursday: DateTime(2026, 7, 2));
+      final events = parser.parseGrid(rows, const []);
+      final boat = events.firstWhere((e) => e.title.startsWith('Boat On'));
+
+      expect(boat.title, 'Boat On!');
+      expect(boat.subSchedule, isEmpty);
+      expect(boat.startTime, DateTime(2026, 7, 4, 12));
+      expect(boat.endTime, DateTime(2026, 7, 4, 14));
+      expect(boat.locationKey, 'dock-canoes');
+      expect(boat.locationDisplayName, 'Dock & Canoes');
+    });
+
     test('parseGrid strips inline emoji attributes from titles', () {
       final rows = <List<String>>[
         ['', 'Theater'],

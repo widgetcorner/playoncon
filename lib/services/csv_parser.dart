@@ -701,6 +701,17 @@ class CsvScheduleParser {
     final items = <ScheduleItem>[];
     final titleParts = <String>[];
     for (final line in lines) {
+      // A line ending in the event's own time RANGE ("Boat On! 12-2 PM")
+      // is not a `Label - Time` sub-schedule item — the range's internal
+      // hyphen only mimics the delimiter. Fold it back into the title so
+      // _extractTimeOverride sets the real start/end. A dash *before* the
+      // range ("Foo - 3-5 PM") marks a descriptive sub-schedule line and is
+      // left alone, matching _extractTimeOverride's own _precededByDash guard.
+      final range = _rangeRe.firstMatch(line);
+      if (range != null && !_precededByDash(line, range.start)) {
+        titleParts.add(line);
+        continue;
+      }
       final m = _subScheduleLineRe.firstMatch(line);
       if (m == null) {
         titleParts.add(line);
