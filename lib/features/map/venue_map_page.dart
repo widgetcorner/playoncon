@@ -12,6 +12,7 @@ import '../../config/app_config.dart';
 import '../../models/cart_position.dart';
 import '../../models/event.dart';
 import '../../models/venue_location.dart';
+import '../../services/app_clock.dart';
 import '../../services/calibration_store.dart';
 import '../../services/cart_positions_repository.dart';
 import '../../services/location_service.dart';
@@ -32,6 +33,10 @@ AssetImage _mapAssetFor(BuildContext context) =>
 
 /// Scale used by the "Detail" preset and the deep-link focus animation.
 const double _kDetailScale = 2.0;
+
+/// Store captures use release UI while running in Flutter's debug test runner.
+/// Normal debug builds retain the hotspot editor and calibration controls.
+final mapDebugToolsProvider = Provider<bool>((_) => kDebugMode);
 
 class VenueMapPage extends ConsumerWidget {
   const VenueMapPage({super.key});
@@ -293,7 +298,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
 
   /// Computes the now/next status line for a venue from the live schedule.
   _VenueStatus? _statusFor(String key) {
-    final now = DateTime.now();
+    final now = ref.read(appClockProvider)();
     final events = ref
         .read(scheduleRepositoryProvider)
         .events
@@ -613,6 +618,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
 
   @override
   Widget build(BuildContext context) {
+    final debugTools = ref.watch(mapDebugToolsProvider);
     ref.listen<MapFocusRequest?>(mapFocusProvider, (_, next) {
       if (next != null) _focusOnHotspot(next.locationKey);
     });
@@ -743,9 +749,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
                       onPressed: calibrationCount == 0 ? null : _clearCalibration,
                     ),
                   ]
-                : ((kDebugMode || AppConfig.calibrationEnabled)
+                : ((debugTools || AppConfig.calibrationEnabled)
                     ? [
-                        if (kDebugMode)
+                        if (debugTools)
                           IconButton(
                             icon: const Icon(Icons.edit_location_alt_outlined),
                             tooltip: 'Edit hotspots',

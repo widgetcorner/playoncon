@@ -51,20 +51,24 @@ placement, and adds no effects dependency.
 | Duo runtime | iOS 27.1, **24A94232** |
 | Other tested runtime | iOS 27.0, **24A434** |
 | Flutter / Dart | Flutter **3.47.1**, Dart **3.13.1** |
-| Repository deployment target | **iOS 13.0**, preserved |
-| Actual tested binary minimum (`MinimumOSVersion`) | **iOS 15.0** |
+| Repository deployment target during Duo validation | **iOS 13.0**, restored afterward |
+| Actual Duo validation binary minimum (`MinimumOSVersion`) | **iOS 15.0** |
+| Approved release `2026.10.6+28` project target / IPA minimum | **iOS 15.0**, approved October 6, 2026 |
 
-Installed Flutter automatically raises the project minimum to iOS 15 for its
-build and updates four SDK-pinned dependency resolutions. Its unrelated tracked
-project/analysis/lockfile changes were restored after validation. Thus this task
-does **not** approve an iOS 15 release minimum. Decide the release Flutter/minimum
-OS combination before shipping; the current installed engine does not validate
-iOS 13/14 support. The new native APIs are guarded at runtime for iOS 27.1, and
-their declarations were verified against the installed SDK. Building this native
-integration requires the iOS 27.1 SDK or later.
+During Duo validation, installed Flutter automatically raised the project minimum
+to iOS 15 and updated four SDK-pinned dependency resolutions. Those tracked
+project/analysis/lockfile changes were restored after that validation; it did not
+approve a release minimum change.
 
-Builds used the bundled offline schedule/map, with no production configuration
-or live network services. The available architecture document referenced by
+For the October 6, 2026 tester release `2026.10.6+28`, the owner approved iOS 15
+as the minimum supported version. The current project targets and verified IPA
+minimum are **iOS 15.0**. This release decision is resolved; iOS 13/14 support is
+no longer part of the release baseline. The new native APIs remain guarded at
+runtime for iOS 27.1, and their declarations were verified against the installed
+SDK. Building this native integration requires the iOS 27.1 SDK or later.
+
+Duo validation builds used the bundled offline schedule/map, with no production
+configuration or live network services. The available architecture document referenced by
 AGENTS.md was missing from its recorded path; existing repository patterns were
 used instead.
 
@@ -163,8 +167,9 @@ strip/fold follow-ups unless specified.
 - Android device/emulator smoke test, real Duo hardware, release-mode build and
   production schedule/configuration. Shared-code tests and Android channel
   fallback pass; no Android binary/device was validated in this task.
-- Minimum-OS release decision and older runtime validation. iOS 27.0 verifies
-  the pre-27.1 fallback; iOS 13–26 runtimes were not run.
+- Older supported runtime validation. The iOS 15 minimum was approved for release
+  `2026.10.6+28`; iOS 27.0 verifies the pre-27.1 fallback, while iOS 15–26 runtimes
+  were not run during Duo validation.
 - Non-full-span reserved fold shapes are not handled as a split by Flutter's
   `DisplayFeatureSubScreen`; any such platform geometry needs a separate test.
 - App Store screenshots/previews and submission are outside this layout task.

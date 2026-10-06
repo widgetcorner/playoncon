@@ -8,7 +8,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Now to Play On Con? We've all been there! Come join a panel of Play On Con regulars as they share their advice for making the most of the weekend and answer your questions about what to expect.",
     "attributes": [],
     "subSchedule": []
   },
@@ -21,7 +21,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Spread joy and encouragement this POC by joining our Apprentice Track Holiday Card Activity! Participants will create fun, handmade holiday cards filled with kind messages, drawings, and well wishes for whomever you want. All card-making supplies will be provided—just bring your creativity and a heart for encouraging others.",
     "attributes": [
       "AT"
     ],
@@ -36,7 +36,7 @@
     "locationDisplayName": "Pool",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "It's a pooltime paradise to start off the weekend! Come jump in the pool and enjoy good tunes!",
     "attributes": [],
     "subSchedule": []
   },
@@ -62,7 +62,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Kick off the convention by meeting new friends and reconnecting with familiar faces at our Holiday Mixer! Break the ice with fun getting-to-know-you games, take part in our optional \"Drinking Around the World\" challenge featuring holiday-inspired beverages (with plenty of alcohol-free options available), and share your favorite memories from PlayOnCons past. Whether it's your first year or you're a longtime camper, this is the perfect way to celebrate, laugh, and start the weekend together.",
     "attributes": [],
     "subSchedule": []
   },
@@ -75,7 +75,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "We love a good holiday episode in our favorite TV shows! Come see some of our favorites and feel the joy of a special holiday episode!",
     "attributes": [],
     "subSchedule": []
   },
@@ -166,7 +166,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "A dance party of a different sort. Join us for a set of weird tunes that will get you on your feet and out of your comfort zone. At last, you don't have to worry about being the worst dancer on the floor; just try not to be the second-worst. A reward awaits for those who survive the night!",
     "attributes": [
       "18+"
     ],
@@ -181,7 +181,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "We will be featuring karaoke in various places around the show this year. We have it in the theater on Thursday Night, by the pool on Friday and Saturday, and some Adults Only Karoke in Lower Mayfield on Saturday night. Plus we have…",
     "attributes": [],
     "subSchedule": []
   },
@@ -194,7 +194,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Your morning pick-me-up. Coffee with a variety of creamer and sweetener options will be available. A keurig is available if you'd like to bring your own special pods. 21+ may come inside Mayfield if you'd like some additions to your coffee.",
     "attributes": [
       "SF"
     ],
@@ -209,7 +209,7 @@
     "locationDisplayName": "Picnic Tables",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Start your day with a morning run or a leisurely walk. Runners can stick to the roads while the hikers hit the trails! What will we find? No bears, plz.",
     "attributes": [],
     "subSchedule": []
   },
@@ -222,7 +222,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Start your day off with the breakfast of champions… CARTOONS!",
     "attributes": [
       "SF"
     ],
@@ -250,7 +250,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Perler beads are small, colorful plastic beads that can be arranged on a pegboard and fused together with heat to create permanent designs. Come make your own creations with us!",
     "attributes": [],
     "subSchedule": []
   },
@@ -276,7 +276,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Riftbound is an official collectible trading card game developed by Riot Games, set in the League of Legends universe. Players command armies of iconic champions, cast spells, and use gear to conquer and hold battlefields in a race to earn 8 points and win the game.",
     "attributes": [],
     "subSchedule": []
   },
@@ -289,7 +289,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "All the spices and fixin's you could ask for! Come make your own Bloody Mary with or without advice from your host Casey.",
     "attributes": [
       "21+"
     ],
@@ -317,7 +317,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Drop in and jam! 2 provided packs and another player is all you need to play! This event will be open to players of all skill levels, and help provided for beginners with no time commitment necessary.",
     "attributes": [],
     "subSchedule": []
   },
@@ -343,7 +343,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Tie Dye is a great way to make custom clothing without breaking the bank. Learn how to turn fabric into a testament to love and peace! This event includes our Apprentices. BYOT, but a few shirts will be available at the event.",
     "attributes": [
       "AT"
     ],
@@ -358,7 +358,7 @@
     "locationDisplayName": "Dock & Canoes",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Take a leisurely trip afloat on Lay Lake. Pick from Canoes, Kayaks and Paddleboards! Canoeing sessions are limited to 30 people.",
     "attributes": [],
     "subSchedule": []
   },
@@ -371,7 +371,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join us for some Jackbox Party games in the Theater! We're going to experiment whether the wifi can support it! Bring a tablet or phone!",
     "attributes": [],
     "subSchedule": []
   },
@@ -397,7 +397,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join the Reverend for a class on how to make boozy egg nog from scratch…and age it. Participants will sample a fresh preparation plus one aged for a month, and a third aged with extra prep before presentation. Perfect for a hot summer day!",
     "attributes": [
       "21+"
     ],
@@ -412,7 +412,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join therapist Christine Penguino, LCSW, and Dr. Sandy Whetmore, PhD in Early Childhood Education, for a discussion on the positive impact of gaming on children's development. From tabletop adventures to video games, we'll explore how games can build creativity, problem-solving, emotional resilience, social connection, and family bonding. Whether you're a parent, educator, gamer, or just curious about why kids love rolling dice and pressing start, this panel will separate the \"screen time goblins\" from the real-world benefits hiding in the treasure chest.",
     "attributes": [
       "SF"
     ],
@@ -427,7 +427,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join in on some cabaret dance basics with a holiday twist! Dance shoes or socks are encouraged, but barefoot is fine, too!",
     "attributes": [
       "21+"
     ],
@@ -442,7 +442,7 @@
     "locationDisplayName": "Archery Field",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Whether you imagine yourself as Robin Hood or Hawkeye, you owe yourself a chance to see how you stack up!",
     "attributes": [],
     "subSchedule": []
   },
@@ -481,7 +481,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Come join host Tony Black (aka Ohio Tony) for Star Wars (Holiday Special and more) Trivia! Compete in teams or individually to win a fabulous prize. Plus, there will be inflatable lightsabers! Be warned, this will not be easy.",
     "attributes": [],
     "subSchedule": []
   },
@@ -494,7 +494,7 @@
     "locationDisplayName": "Rec Field",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "We have two sets of large outdoor dice and have a drinking game of Yahtzee (or 2) with them! We will bring a cooler of drinks and you can also byob. Ideally right after beer croquet.",
     "attributes": [
       "21+"
     ],
@@ -531,7 +531,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join in an open jam in the Guthrie Lodge. We have a wide variety of instruments that might be stopping in, including ukuleles, guitars, flutes, and even a hurdy gurdy! Be sure to bring some water. All skill levels are welcome to jam out some tunes! Feel free to come sing, clap, or shake a shaker.",
     "attributes": [],
     "subSchedule": []
   },
@@ -544,7 +544,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Come chill out in Lower Mayfield with us! We'll be serving and have the area open for people to relax. There maybe classes going on as well.",
     "attributes": [
       "18+"
     ],
@@ -559,7 +559,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Make your loved ones and friends sing songs they hate for fun and fabulous prizes! Two-person teams are required, and you'll score higher if your partner really knows which songs make you squirm. We'll pair up any single players, though, so feel free to come alone! Judges will assign scores in Malevolence, Performance, and Audience Reaction.",
     "attributes": [
       "PG13"
     ],
@@ -574,7 +574,7 @@
     "locationDisplayName": "Rec Field",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join The Reverend for a round of BYOB croquet! One hand MUST be distracted with a beverage to play. Seersucker suits are appropriate. 21+ Only!",
     "attributes": [
       "21+"
     ],
@@ -602,7 +602,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Goblin Quest is a tabletop roleplaying game about slapstick violence, fatal ineptitude, and the greatest adventure of your life. Play five goblins each (in sequence, not parallel) and watch them meet hilarious ends while failing to achieve the most basic tasks. Will they survive the dangerous world of the Great Battle Camp and avoid the attentions of brutal orcs, murderous bugbears, mean-spirited hobgoblins and scary wizards? Probably not. But you'll have fun finding out! Ages 12+.",
     "attributes": [
       "PG13"
     ],
@@ -643,7 +643,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "We'll be serving so you can have some refreshments while enjoying the other events!",
     "attributes": [
       "21+"
     ],
@@ -686,7 +686,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "You wake up in the barracks just like every day (right?). You meet the eyes of your companions and say your good mornings as you always do (right?), but this time as you do you catch a flash of a memory of a feeling of fear, betrayal, confusion, and war. It ends almost before it begins, but it's still there in the back of your mind. You expect this day to be just like \"every other day\" as always just as you \"remember\" them being, except this morning a man runs in panicking and says \"The village is under attack by monsters!\" (Which never happens, right?). What happens next is up to you. Interested? Come play and find out where the group will take the story next! Ages 12+.",
     "attributes": [
       "PG13"
     ],
@@ -701,7 +701,7 @@
     "locationDisplayName": "Canopy",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Come join Professor Shyguy for a flurry of chiptune rock. With his anthems to everything from The Guild to Portal, this show is destined to appeal to all your nerdy bits.",
     "attributes": [],
     "subSchedule": []
   },
@@ -742,7 +742,7 @@
     "locationDisplayName": "Lakeside Fire Pit",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Tis the Season to relax by the fire! Come join us as we bask in some warm flames and warm hearts.",
     "attributes": [
       "SF"
     ],
@@ -757,7 +757,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Look. We know it's bad. It's REALLY bad. But is it so bad it's good? Probably not. Still, it was a major inspiration for this year's theme, so we ALL get to experience it!\n\nWe're sorry…. maybe.",
     "attributes": [],
     "subSchedule": []
   },
@@ -770,7 +770,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "A scream echoes through the sleepy town of Ravenswood Bluff. The townsfolk rush to investigate and find the beloved local storyteller has been murdered, their body hanging limp from the clocktower. As blood drips onto the cobblestones below, a realization slowly dawns… a demon has been unleashed, killing by night and taking on human form by day. Can good find the demon in time? Or will evil overrun this once peaceful town?\n\nBlood on the Clocktower is a game of murder and mystery, lies and logic, deduction and deception for five-to-twenty courageous players and one devious storyteller.\n\nA social game played in person, seated in a circle, each player receives either a 'good' or 'evil' token with their unique character on it. Good players share information to solve the mystery whilst evil players lie about who they are and what they know. The good team wins if they can piece together their knowledge, trust each other, and execute the demon. The evil team wins if the demon can sow distrust, evade detection, and wipe out the village.",
     "attributes": [],
     "subSchedule": []
   },
@@ -783,7 +783,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "The Rocky Horror Picture Show with audience partici...pation! Costumes and props are encouraged, though we'll restrict anything that's messy (so no food or anything that can't be cleaned up within a couple of minutes). We'll have a quick 5-10 minute intro at the beginning, then show the movie.",
     "attributes": [
       "PG13"
     ],
@@ -813,7 +813,7 @@
     "locationDisplayName": "Video Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Back after a multi year break, it's the con tradition of The Ultimate Gamer. Once a weekend long gauntlet, now place your score on the tryout game in Video Gaming before Saturday morning and then show up and compete in an 8 person winner take all battle for the ultimate crown (crown included)!\n\nIf there's more room for ham: Prove to your friends and family that you are indeed the Ultimate Gamer, at least for this year. Guaranteed to finish in less than the entire weekend!",
     "attributes": [],
     "subSchedule": []
   },
@@ -826,7 +826,7 @@
     "locationDisplayName": "Video Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Start your morning with song and dance! A hearty round of energetic expression… on a dance pad. Friday's session will be for everyone, and Saturday will host an Apprentice session! Touching grass is overrated!",
     "attributes": [
       "AT"
     ],
@@ -841,7 +841,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Your morning pick-me-up. Coffee with a variety of creamer and sweetener options will be available. A keurig is available if you'd like to bring your own special pods. 21+ may come inside Mayfield if you'd like some additions to your coffee.",
     "attributes": [
       "SF"
     ],
@@ -856,7 +856,7 @@
     "locationDisplayName": "Picnic Tables",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Start your day with a morning run or a leisurely walk. Runners can stick to the roads while the hikers hit the trails! What will we find? No bears, plz.",
     "attributes": [],
     "subSchedule": []
   },
@@ -869,7 +869,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Start your day off with the breakfast of champions… CARTOONS!",
     "attributes": [
       "SF"
     ],
@@ -884,7 +884,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Choose from four fun creations to celebrate your favorite holiday or just your nerdiness! Hillary will guide you through creating a cute amigurumi project that's easy for beginners and fun for more experienced crafters as well. Any skill level is welcome and all materials will be provided.",
     "attributes": [],
     "subSchedule": []
   },
@@ -897,7 +897,7 @@
     "locationDisplayName": "Mini-golf",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Get ready for a fun-filled Easter adventure designed especially for our Apprentice Track participants! Join us at the miniature golf course for an exciting Easter Egg Hunt where you'll search for colorful eggs hidden throughout the course, enjoy the festive atmosphere, and connect with friends along the way.\n\nBring your Easter basket, wear comfortable shoes, and get ready for a time of laughter, teamwork, and friendly competition. Keep an eye out for special prize eggs hidden among the course—they could lead to extra surprises!",
     "attributes": [
       "AT"
     ],
@@ -938,7 +938,7 @@
     "locationDisplayName": "Climbing Wall",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "The day never begins until you cling precariously to a cliff face. This activity should be considered a metaphor.",
     "attributes": [],
     "subSchedule": []
   },
@@ -951,7 +951,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "All the spices and fixin's you could ask for! Come make your own Bloody Mary with or without advice from your host Casey.",
     "attributes": [
       "21+"
     ],
@@ -979,7 +979,7 @@
     "locationDisplayName": "Archery Field",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Whether you imagine yourself as Robin Hood or Hawkeye, you owe yourself a chance to see how you stack up!",
     "attributes": [],
     "subSchedule": []
   },
@@ -992,7 +992,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Create your own magical map using stamps, specialty papers, inks, textures, and mixed-media tools. Participants will design fantasy lands filled with winding rivers, hidden forests, mountain kingdoms, mysterious ruins, and secret paths. Perfect for storytellers, artists, D&D players, and anyone who wants to build a world on paper, no cartography experience required.",
     "attributes": [],
     "subSchedule": []
   },
@@ -1005,7 +1005,7 @@
     "locationDisplayName": "Dock & Canoes",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Take a leisurely trip afloat on Lay Lake. Pick from Canoes, Kayaks and Paddleboards! Canoeing sessions are limited to 30 people.",
     "attributes": [],
     "subSchedule": []
   },
@@ -1031,7 +1031,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join your host Jared for White Elephant or Dirty Santa (depending on who you ask). Come choose a cocktail card, but be careful, you might not get to keep it for long! He will jam out the cocktails as they are picked. No gifts please, just bring yourself!",
     "attributes": [
       "21+"
     ],
@@ -1059,7 +1059,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "It's an Olan Mills Miracle!\n\n\"The line in this mall isn't TOO long. Maybe this year he won't smell quite as bad as last year's Santa. Wait, that's him? Isn't he a little… I dunno… skinny to be Santa? That pillow isn't doing him justice. Maybe this picture will be good for the holiday card we're sending out. Did you make sure all the kids knew how to ask for their present? Wait, who's THAT?!?!\"\n\nWes and Dan invite you to come get Polaroid pictures with Santa in the Lodge!",
     "attributes": [],
     "subSchedule": [
       {
@@ -1092,7 +1092,7 @@
     "locationDisplayName": "Pool",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Croon poolside for some afternoon delight… full karaoke goodness. Sing loud, sing proud, and make everyone at the 4-H know you're there!",
     "attributes": [],
     "subSchedule": []
   },
@@ -1131,7 +1131,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Come chill out in Lower Mayfield with us! We'll be serving and have the area open for people to relax. There maybe classes going on as well.",
     "attributes": [
       "18+"
     ],
@@ -1194,7 +1194,7 @@
     "locationDisplayName": "Outdoors",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Join The Reverend for a round of BYOB croquet! One hand MUST be distracted with a beverage to play. Seersucker suits are appropriate. 21+ Only!",
     "attributes": [
       "21+"
     ],
@@ -1209,7 +1209,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Nothing says holiday gathering quite like a punch bowl. Join Lisa for a spirited tour through punch's 400-year history, from East India Company sailors to George Washington's Christmas bowl to your next holiday party. Learn the legendary five-element formula, explore many classics, and walk away with recipes that will make you the most dangerous host of the season.",
     "attributes": [
       "21+"
     ],
@@ -1224,7 +1224,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Are you the kind of person who loves Flag Day? Tell your friends about Festivus? Just really good at random knowledge? Come play pub style trivia with a festive flair! Teams will compete in two rounds of ten questions each with more excitement than Christmas morning!",
     "attributes": [],
     "subSchedule": []
   },
@@ -1252,7 +1252,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Carnival of Doom Come have a fun day at the carnival and play some games and win some prizes you may or may not know you want or need, they are to die for! We promise you'll have a killer good time! The best part is you never have to leave (even if you want to)! Ages 12+.",
     "attributes": [
       "PG13"
     ],
@@ -1280,7 +1280,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "We'll be serving so you can have some refreshments while enjoying the other events!",
     "attributes": [
       "21+"
     ],
@@ -1308,7 +1308,7 @@
     "locationDisplayName": "Theater",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "A line-up of family-friendly movies for our Apprentices to enjoy!",
     "attributes": [
       "AT"
     ],
@@ -1323,7 +1323,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Goblin Quest is a tabletop roleplaying game about slapstick violence, fatal ineptitude, and the greatest adventure of your life. Play five goblins each (in sequence, not parallel) and watch them meet hilarious ends while failing to achieve the most basic tasks. Will they survive the dangerous world of the Great Battle Camp and avoid the attentions of brutal orcs, murderous bugbears, mean-spirited hobgoblins and scary wizards? Probably not. But you'll have fun finding out! Ages 12+.",
     "attributes": [
       "PG13"
     ],
@@ -1379,7 +1379,7 @@
     "locationDisplayName": "Canopy",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Superior Mixmasters battle neophyte challengers in number one challenge to the death! Judges demand drinks with secret ingredient, and bartenders do as they are told. Watch as Cocktail Stadium becomes mighty arena of conflict!",
     "attributes": [
       "18+"
     ],
@@ -1394,7 +1394,7 @@
     "locationDisplayName": "Gaming",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "A scream echoes through the sleepy town of Ravenswood Bluff. The townsfolk rush to investigate and find the beloved local storyteller has been murdered, their body hanging limp from the clocktower. As blood drips onto the cobblestones below, a realization slowly dawns… a demon has been unleashed, killing by night and taking on human form by day. Can good find the demon in time? Or will evil overrun this once peaceful town?\n\nBlood on the Clocktower is a game of murder and mystery, lies and logic, deduction and deception for five-to-twenty courageous players and one devious storyteller.\n\nA social game played in person, seated in a circle, each player receives either a 'good' or 'evil' token with their unique character on it. Good players share information to solve the mystery whilst evil players lie about who they are and what they know. The good team wins if they can piece together their knowledge, trust each other, and execute the demon. The evil team wins if the demon can sow distrust, evade detection, and wipe out the village.",
     "attributes": [],
     "subSchedule": []
   },
@@ -1437,7 +1437,7 @@
     "locationDisplayName": "Lower Mayfield",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "Your morning pick-me-up. Coffee with a variety of creamer and sweetener options will be available. A keurig is available if you'd like to bring your own special pods. 21+ may come inside Mayfield if you'd like some additions to your coffee.",
     "attributes": [
       "SF"
     ],
@@ -1452,7 +1452,7 @@
     "locationDisplayName": "Lodge",
     "track": null,
     "presenter": null,
-    "details": null,
+    "details": "We consider this convention to be a community event. Your input is not only desired but needed if we are to make POC into the best convention it can be. Please join us as we discuss Play On Con 2026 and plan for POC 20 in 2027.",
     "attributes": [],
     "subSchedule": []
   }

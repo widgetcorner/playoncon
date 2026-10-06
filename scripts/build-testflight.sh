@@ -1,82 +1,15 @@
 #!/usr/bin/env bash
-#
-# Builds a release .ipa for TestFlight with the app's configuration baked in.
-#
-# WHY THIS EXISTS: TestFlight builds are NOT launched with `flutter run`, so the
-# --dart-define values below must be compiled into the build. If you build
-# without them, the app ships with no schedule URL / Discord link / event date.
-#
-# HOW TO USE:
-#   1. Edit the values below if the spreadsheet ID, tab names, Discord URL,
-#      or Thursday date change.
-#   2. In Terminal, from the project root, run:
-#        ./scripts/build-testflight.sh
-#   3. When it finishes, the file to upload is printed at the end
-#      (build/ios/ipa/playoncon.ipa).
-#
-# NOTE: increment the build number in pubspec.yaml (the part after the "+",
-# e.g. 1.0.0+1 -> 1.0.0+2) before EACH upload, or App Store Connect rejects it
-# as a duplicate.
-
+# Build and verify one fresh TestFlight IPA. An archive without an export fails.
 set -euo pipefail
-
-# --- EDIT THESE WHEN THE 2026 SCHEDULE IS LIVE ---------------------------------
-# Spreadsheet tabs are addressed by gid (the stable per-tab id) via the CSV
-# export endpoint. The old gviz/tq "&sheet=<tab name>" form silently falls back
-# to the FIRST tab whenever the name doesn't match exactly (e.g. a tab rename),
-# which made the second tab's events disappear from the app. gid is immune to
-# renames. Find a tab's gid in the sheet URL when that tab is selected
-# (…/edit#gid=NNN).
-# The schedule must be a NATIVE Google Sheet, not an uploaded .xlsx — the
-# Sheets API's merge-aware endpoint returns FAILED_PRECONDITION on Office
-# files, which meant multi-hour events (Nidhogg, Malevolent) came back as
-# 1-hour blocks in earlier builds. Wes converted the original .xlsx via
-# File → Save as Google Sheets; the file ID below is the native copy.
-SHEET_ID="1uMrBl9oFz9CWTfJX5eET-3bguERKpZ4IahPbFdpFqT0"
-SHEET_EXPORT="https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv"
-SHEET_VIEW_URL="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing"
-GID_THU_FRI="2027634205"   # 2026 Thursday + Friday
-GID_SAT_SUN="1820056449"   # 2026 Saturday + Sunday
-DISCORD_URL="https://discord.gg/4GQgGnXN5"
-PROGRAM_URL="https://drive.google.com/file/d/1sx46MEfKEBswAv_wDgk3Ly1c6PX-ECIB/view?usp=sharing"
-EVENT_THURSDAY="2026-07-02"   # yyyy-MM-dd of the convention's Thursday
-SUPABASE_URL="https://yfjnurscnzjvjvhrpgwb.supabase.co"
-# ------------------------------------------------------------------------------
-
-# Secrets live in scripts/.env.local (git-ignored). Rotate keys there, not here.
-# See scripts/.env.local.example for the required variables.
-ENV_FILE="$(dirname "$0")/.env.local"
-if [ ! -f "${ENV_FILE}" ]; then
-  echo "ERROR: ${ENV_FILE} not found." >&2
-  echo "  Copy scripts/.env.local.example to scripts/.env.local and fill it in." >&2
-  exit 1
-fi
-# shellcheck disable=SC1090
-source "${ENV_FILE}"
-: "${SHEETS_API_KEY:?SHEETS_API_KEY must be set in scripts/.env.local}"
-: "${SUPABASE_PUBLISHABLE_KEY:?SUPABASE_PUBLISHABLE_KEY must be set in scripts/.env.local}"
-
-CSV_URLS="${SHEET_EXPORT}&gid=${GID_THU_FRI},${SHEET_EXPORT}&gid=${GID_SAT_SUN}"
-SHEET_GIDS="${GID_THU_FRI},${GID_SAT_SUN}"
-
-# Read the version: line from pubspec.yaml so the Info tab's version string is
-# always in sync with what App Store Connect sees (replaces package_info_plus).
-APP_VERSION=$(awk '/^version: /{print $2; exit}' pubspec.yaml)
-
-echo "Building release .ipa for TestFlight..."
-flutter build ipa \
-  --dart-define=POC_SHEETS_API_KEY="${SHEETS_API_KEY}" \
-  --dart-define=POC_SHEET_ID="${SHEET_ID}" \
-  --dart-define=POC_SHEET_GIDS="${SHEET_GIDS}" \
-  --dart-define=POC_SCHEDULE_CSV_URL="${CSV_URLS}" \
-  --dart-define=POC_SCHEDULE_VIEW_URL="${SHEET_VIEW_URL}" \
-  --dart-define=POC_DISCORD_INVITE_URL="${DISCORD_URL}" \
-  --dart-define=POC_PROGRAM_URL="${PROGRAM_URL}" \
-  --dart-define=POC_EVENT_THURSDAY="${EVENT_THURSDAY}" \
-  --dart-define=POC_SUPABASE_URL="${SUPABASE_URL}" \
-  --dart-define=POC_SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY}" \
-  --dart-define=POC_APP_VERSION="${APP_VERSION}"
-
-echo
-echo "Done. Upload this file to App Store Connect (via Xcode Organizer or Transporter):"
-echo "  $(pwd)/build/ios/ipa/*.ipa"
+source "$(dirname "$0")/release-config.sh"
+cd "${RELEASE_PROJECT_ROOT}"
+release_require_config
+release_dart_defines
+python3 scripts/release_preflight.py ios
+STARTED_AT="$(python3 -c 'import time; print(time.time())')"
+echo "Building release IPA for TestFlight..."
+flutter build ipa "${POC_DART_DEFINES[@]}" "$@"
+python3 scripts/verify_release_artifacts.py ios \
+  --ipa-dir build/ios/ipa --since "${STARTED_AT}" \
+  --version "${APP_VERSION}" --id "${POC_BUNDLE_ID}" \
+  --receipt "build/releases/${APP_VERSION}/ios-artifact.json"

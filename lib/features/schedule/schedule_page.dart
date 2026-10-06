@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../models/event.dart';
+import '../../services/app_clock.dart';
 import '../../services/network_monitor.dart';
 import '../../services/saved_events_store.dart';
 import '../../services/schedule_repository.dart';
@@ -219,7 +220,7 @@ class _EventListState extends ConsumerState<_EventList> {
   /// preferring that day's header just above it for context. Falls back to the
   /// top when the whole schedule is in the past (or hasn't started).
   int _nowAnchorIndex(List<Object> items) {
-    final now = DateTime.now();
+    final now = ref.read(appClockProvider)();
     for (var i = 0; i < items.length; i++) {
       final item = items[i];
       if (item is Event && item.endTime.isAfter(now)) {

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/app_config.dart';
+import '../../services/app_clock.dart';
 import '../../services/schedule_repository.dart';
 import '../../theme/poc_theme.dart';
 import 'contact_page.dart';
@@ -236,14 +237,14 @@ class BetaPill extends StatelessWidget {
 
 /// Live countdown to Thursday 4 PM local. Hidden once the moment has passed
 /// (or when [POC_EVENT_THURSDAY] isn't configured).
-class _CountdownCard extends StatefulWidget {
+class _CountdownCard extends ConsumerStatefulWidget {
   const _CountdownCard();
 
   @override
-  State<_CountdownCard> createState() => _CountdownCardState();
+  ConsumerState<_CountdownCard> createState() => _CountdownCardState();
 }
 
-class _CountdownCardState extends State<_CountdownCard> {
+class _CountdownCardState extends ConsumerState<_CountdownCard> {
   Timer? _ticker;
   Duration _remaining = Duration.zero;
 
@@ -266,7 +267,7 @@ class _CountdownCardState extends State<_CountdownCard> {
       _ticker?.cancel();
       return;
     }
-    final diff = start.difference(DateTime.now());
+    final diff = start.difference(ref.read(appClockProvider)());
     if (diff.isNegative) {
       _ticker?.cancel();
       if (mounted && _remaining != Duration.zero) {

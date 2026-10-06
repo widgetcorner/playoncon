@@ -1,136 +1,184 @@
 ---
 name: ship
-description: "Ship the current working-directory changes to BOTH TestFlight (iOS) and Google Play internal testers (Android). Bumps the +N build number in pubspec.yaml, runs the iOS and Android builds sequentially, uploads to both stores in parallel, commits the changed files + pubspec bump, pushes to remote, and writes release notes. Invoke when the user says something like 'ship this', 'ship it', 'commit and push this, add a new version number and push to testers', 'ship this to Play', 'ship to TestFlight', or any close variant."
+description: "Release PlayOnCon to TestFlight and Google Play internal testers, including offline schedule refresh, versioning, verified builds, store notes, changed Play screenshots, and commit/push. Use for $ship, 'ship it', or a request to publish a tester build. Default to both stores; honor an explicit platform-only request. Editing this skill or running on a device does not start a release."
 ---
 
-# Ship to TestFlight + Play internal testers (PlayOnCon)
+# Ship PlayOnCon
 
-Fuller's one-shot flow for getting a change from working tree → both TestFlight and Play Console internal track in a single pass. Runs the whole pipeline without asking; the standing store-upload authorization applies to the push step.
+Work from the PlayOnCon repository root. App identifier: `com.fuller.playoncon`.
+A ship request includes selected tester uploads, store notes, changed Play phone
+screenshots, commit, and current-branch push. Honor narrower requests and existing
+authorization. Loading, comparing, or editing this skill alone does not authorize
+a release. Keep the Codex and Claude copies of this skill in sync.
 
-Store credentials come from the `store-upload-credentials` memory — don't re-ask for the ASC Key ID / Issuer ID / package name / JSON path.
+Read [the release reference](../../../scripts/RELEASE.md) for credential setup,
+artifact verification, store commands, metadata retries, and iOS export recovery.
 
-## Preconditions to check silently
+## Establish or resume the release
 
-- `git status --short` shows only intentional changes (no stray files you don't recognize — if you see any, stop and ask).
-- `scripts/.env.local` exists (both build scripts source it).
-- `~/.playconsole/playoncon-publisher.json` exists.
-- `~/.appstoreconnect/private_keys/AuthKey_<key-id>.p8` exists.
+- Read `git status --short`, staged/unstaged diffs, `pubspec.yaml`, and recent
+  commits. Identify intended changes, including already committed app changes
+  since the last shipped source. Inspect unfamiliar paths; leave unrelated work
+  untouched. Resolve uncertainty affecting the built app before uploading.
+- Read both build scripts and `scripts/release-config.sh`. Use their shared
+  configuration; bare Flutter builds can omit schedule and other defines.
+- Reuse relevant passing checks for unchanged code, or run
+  `flutter analyze --no-pub` and applicable tests. Resolve release-relevant
+  failures. Run local Python release-tool tests when those helpers changed.
+- Stop only this checkout's active `flutter run` session: use its known command
+  session with `write_stdin` (`q` or Ctrl-C), or verify PID and working directory
+  first. Never kill all Flutter processes; runs/builds share `.dart_tool`.
+- Validate upload tools, configuration, and signing before bumping. Use environment
+  metadata or gitignored `scripts/.env.local`, not Claude memory. Check existence
+  without printing secrets. Android needs `android/key.properties` and its actual
+  upload keystore; a debug-signed bundle is not a tester release.
+- For interrupted releases, establish version, built source, exact artifact
+  paths/hashes, and each store's binary/notes/screenshots results. Check remote
+  status if an upload result is uncertain. Resume only unfinished work when
+  source and artifacts are unchanged.
 
-If any debug `flutter run` task is still running in the background, `TaskStop` it before building — Gradle and `flutter run` both share `.dart_tool` and will collide.
+Keep a record under gitignored `build/releases/<version>/`: canonical notes,
+built-source revision/diff, artifact paths/hashes, and per-store results. Update
+each completed step; record pending metadata separately from accepted binaries.
+Never store credentials there. A notes failure or failed push is not a new release.
 
-## Step 1 — Set the version
+## 1. Refresh the offline schedule
 
-The version string is `YYYY.M.D+N` — marketing = **today's date**, build number = monotonically incrementing across ships (never resets on a date change). Run `date +%Y.%-n.%-d` to get today's date in the exact format (no zero-padding on month/day; `2026.7.4`, not `2026.07.04`).
+Run `./scripts/refresh-schedule.sh` before either build. It uses shared sheet/date
+configuration, all configured tabs, Sheets API merge data, and the app's parser
+and venue aliases. Do not substitute BurlyCon's CSV importer: CSV loses merged
+durations and spanning venue headers.
 
-Read `pubspec.yaml`, then:
+Review tab/event counts, date range, venue matches, and effective description
+coverage. The importer preserves the old snapshot on malformed/empty/missing-tab
+data and stops on a significant count drop. Inspect the source of a drop before
+explicitly allowing it. Include changed `assets/data/fallback-schedule.json`.
+A resumed release with accepted binaries retains the snapshot they were built
+with; do not refresh or silently change contents during recovery.
 
-- **If the marketing date matches today**: increment `+N`.
-  `version: 2026.7.4+25` → `version: 2026.7.4+26`
-- **If the marketing date is in the past** (a day or more old): set marketing to today's date AND increment `+N`.
-  `version: 2026.7.2+24` → `version: 2026.7.4+25`
+## 2. Set the version once
 
-The `+N` build number is monotonic across the whole app — TestFlight and Play both require it to strictly increase, regardless of whether the marketing version changed. Never reset it. Never bump marketing to a *future* date, and never bump marketing backward.
-
-## Step 2 — Build both artifacts (sequentially)
-
-Both builds share `.dart_tool`, so run them one at a time. iOS first — signing issues surface faster than Gradle failures.
-
-```bash
-./scripts/build-testflight.sh    # ~1–2 min, produces build/ios/ipa/*.ipa
-./scripts/build-play.sh          # ~1–2 min, produces build/app/outputs/bundle/release/app-release.aab
-```
-
-Run each as a background task with a 10-minute timeout. Success lines:
-
-- iOS: `✓ Built IPA to build/ios/ipa (~30MB)`
-- Android: `✓ Built build/app/outputs/bundle/release/app-release.aab (~55MB)`
-
-The Kotlin Gradle Plugin (KGP) warning on Android is benign — ignore it.
-
-## Step 3 — Upload to both stores (in parallel)
-
-Different APIs, no shared state — dispatch both uploads in the same message as parallel background tasks.
-
-### iOS → TestFlight
-
-```bash
-xcrun altool --upload-app \
-  --type ios \
-  -f build/ios/ipa/*.ipa \
-  --apiKey <from store-upload-credentials memory> \
-  --apiIssuer <from store-upload-credentials memory>
-```
-
-Long-running (~2 min normal, up to 25 min if Apple's API is flaky — altool retries on transient 500s, don't kill it). Give this background task a **20-minute timeout**. Success line:
-
-```
-UPLOAD SUCCEEDED with no errors
-```
-
-Build appears in TestFlight after Apple processes it (typically 10–30 min after upload completes).
-
-### Android → Play internal
+Use `YYYY.M.D+N`: today's local date, unpadded month/day, and a build number that
+increases across releases, including date changes. Read the current value first.
 
 ```bash
-fastlane supply \
-  --aab build/app/outputs/bundle/release/app-release.aab \
-  --package_name com.fuller.playoncon \
-  --json_key ~/.playconsole/playoncon-publisher.json \
-  --track internal \
-  --skip_upload_metadata true \
-  --skip_upload_changelogs true \
-  --skip_upload_images true \
-  --skip_upload_screenshots true
+TZ="${POC_RELEASE_TIMEZONE:-America/New_York}" date '+%Y.%-m.%-d'
 ```
 
-Typical end-to-end ~30 s. Success line:
+Use `%m` for month; `%n` inserts a newline. For a fresh release use today's
+marketing date and increment `+N` once. Never reset it, move marketing backward,
+or silently choose a future date. Resolve existing future dates before editing.
+For interrupted releases reuse the version when source/artifacts are unchanged.
 
-```
-Successfully finished the upload to Google Play
-```
+## 3. Capture and build
 
-## Step 4 — Commit and push
+For Play, run `./scripts/capture-store-assets.sh`. It captures
+actual Android screens with frozen schedule/time/saves/connectivity/location/cart
+state and hides debug-only map controls. Its fixture is separate from the live
+fallback; update examples only when deliberately changing listing content.
 
-Only after **both** uploads have succeeded — never commit a version bump that only shipped to one store, because the next ship attempt will re-bump and skip the failed store.
+Review images in `design/google-play/manifest.json` order. A byte diff is a cue to
+inspect, not proof of meaningful UI change. Fix failed captures and clipped or
+unfinished screens before publishing. No changed PNGs normally means no listing
+update. For an interrupted screenshot upload or initial setup, check remote hashes
+before skipping: a clean checkout alone does not prove the store has these images.
 
-Stage by **explicit path** — never `git add .` / `-A`. Include:
-
-- Every file listed by `git status --short` that was part of what shipped (source + test edits).
-- `pubspec.yaml`.
-
-Exclude machine-specific noise: `ios/Runner.xcodeproj/project.pbxproj` (unless the user says otherwise), `android/local.properties`, `Pods/`, `.dart_tool/`.
-
-Commit message: one line summarizing what shipped, ending with `; bump to <version>`. Follow the repo's existing style (see `git log --oneline -5`):
-
-```
-<short summary of the change>; bump to 2026.7.2+23
-```
-
-If there's a compelling "why," add a body paragraph — but keep it tight. Then:
+Run selected builds sequentially, iOS first when shipping both:
 
 ```bash
-git push
+./scripts/build-testflight.sh
+./scripts/build-play.sh
 ```
 
-Standing authorization applies — no need to ask before pushing. Push only the current branch, never force-push.
+Use command sessions with short initial yields, retain session IDs, and collect
+final exit codes. Keep progress updates flowing. Investigate stalled commands
+instead of imposing a timeout that kills a healthy build/upload. The known KGP
+warning alone is not a failure.
 
-## Step 5 — Write release notes
+Require fresh artifacts with intended embedded version/build and app ID. Select
+the exact IPA; never upload `*.ipa`. Archive success does not prove IPA export.
+For signing/export failures, inspect installed identities and matching valid
+profiles and re-export the existing valid archive using the release reference.
+Do not revoke/replace certificates or reuse a stale temporary export plist.
 
-At the end of the run, emit release notes in two forms so Fuller can paste either into Play Console / App Store Connect (both have per-build "What to test" fields) or share with the team:
+## 4. Upload binaries and store notes
 
-**Short (store consoles):** bullet list, under 500 chars, user-facing language ("Rocky Horror now starts at 11:30 PM", not "parser fix"). Focus on what the tester will *see or feel*, not the implementation.
+Prepare canonical user-facing `en-US` notes from changes since the last shipped
+source, including already committed changes before this bump. Reuse user-supplied
+wording. Keep all UTF-8 text under 500 characters including bullets/newlines.
+For a build-only release write a truthful brief note.
 
-**Longer (team/internal):** 3–6 bullets with the technical framing — what changed, why, and any behavior detail that matters when triaging feedback.
+Save exact text in the release record. Prepare isolated Play metadata containing
+only `en-US/changelogs/<verified-version-code>.txt`; no `default.txt` or stale
+notes. Use the helper commands in the release reference.
 
-Derive both from the commit body plus the file diff — don't invent features. If the change is purely mechanical (build number only), say so and skip the short form.
+After all requested builds/checks succeed, launch independent uploads concurrently
+when both stores were requested. In Codex use `Promise.allSettled` for independent
+launches, inspect every result, and retain each session ID. Builds share a cache;
+store uploads do not. Source credential/path variables in each upload shell.
 
-## Failure modes to recognize fast
+Require successful final exits and upload acknowledgements. Upload acceptance,
+processing, and tester availability are distinct; report only verified state.
+Keep Play on `internal`.
 
-- **Edit rejected because pubspec.yaml wasn't read this turn** → Read it, then Edit. Common when resuming from a summary.
-- **Debug run still holds the build cache** → TaskStop the flutter run task before invoking either build script.
-- **fastlane "APK specifies a version code that has already been used"** → the +N didn't get baked in; re-verify pubspec and rerun the build.
-- **fastlane "Package not found"** → someone changed the package name; the current value is `com.fuller.playoncon`.
-- **altool "Invalid Pre-Release Train. The train version 'X.Y.Z' is closed"** (error 90186) → Apple has closed that marketing-version train. Since the skill sets marketing to today's date on every ship, this only fires when re-shipping on the same day after Apple has already closed today's train. Bump marketing forward by one day (`2026.7.4` → `2026.7.5`) and rebuild both — flag this to the user in the commit message since it's an owner-visible version drift from the actual calendar date.
-- **altool 401 / "App not found"** → wrong ASC Key ID + Issuer ID pair, or the `.p8` file is missing. The credentials memory has the correct values.
-- **One store succeeded, the other failed** → do NOT commit yet. Fix the failure, re-upload only the failed store using the already-built artifact (no rebuild needed unless the artifact is stale), then commit once both are up.
-- **iOS export-compliance halts the build** → `ITSAppUsesNonExemptEncryption=false` should already be set in `ios/Runner/Info.plist`; if it's missing, add it before rebuilding.
+Use `scripts/upload-play.sh` for Play binary uploads, with the flags from the
+release reference. Bare fastlane lacks the installed client's review-preservation
+guard; the wrapper protects every commit attempt without changing installed gems.
+
+After Apple accepts the IPA, the metadata helper publishes TestFlight What to Test
+for the exact app/marketing version/build, waits for Apple to expose it, and reads
+back `en-US` text. If unavailable, retain upload success and report notes pending.
+For Play, upload changelogs with the bundle and verify exact internal release text.
+Preserve other locales, listing text, tester groups, and notification settings.
+
+For reviewed changed Play screenshots, run the images-only helper: compare hashes
+and order, validate an isolated edit, commit, then read back hashes/order. It
+changes only manifest-listed `en-US` phone screenshots. Do not overlap notes and
+screenshot Play edits; commits can invalidate one another. Keep team notes in chat
+for the user to share.
+
+The metadata helpers reject commits when another Play change is in review. Report
+that blocker; do not cancel or resubmit unrelated review work automatically.
+
+## Recovery
+
+- One binary accepted: retry only failed selected store with unchanged verified
+  artifact. Never upload the accepted binary again.
+- Uncertain result: check remote state before retrying or bumping.
+- Notes/screenshots failed or pending: retain binary/version/record and retry only
+  missing metadata. The notes-only Play helper preserves locales/release fields.
+- Duplicate version code: verify embedded bytes and remote acceptance first.
+  A genuinely replacement binary needs a new monotonic build number.
+- Apple train closed (90186): reconcile store state with today's version and obtain
+  a versioning decision. Never silently date the release tomorrow.
+- Credential/access failure: verify key/issuer pairing, private-key presence,
+  package ID, and app access. Reuse setup; do not reinstall available fastlane or
+  guess from multiple `.p8` files.
+- Export compliance: retain `ITSAppUsesNonExemptEncryption=false` only while accurate.
+- A fix changing app contents after one platform accepted a binary requires an
+  explicit replacement release/version decision; do not claim source parity.
+
+## 5. Commit, push, report
+
+After every selected binary upload succeeds, stage intended shipped source/tests,
+snapshot, screenshot PNGs/manifest, and `pubspec.yaml` by explicit path. Review
+staged diff against built source. Never `git add .` / `-A`. Exclude credentials,
+local properties, Pods, build output, and `.dart_tool`. Inspect `project.pbxproj`:
+include intentional native changes; exclude incidental machine noise.
+
+Follow recent commit style:
+
+```text
+<summary of the shipped change>; bump to <version>
+```
+
+Push only current branch to intended remote/upstream, without force. A ship
+request authorizes push; editing this skill does not. If push fails after
+commit/uploads, resume at push without rebuilding/re-uploading. Pending metadata
+can be reported separately while committing successful binary releases; keep
+their record until metadata completes.
+
+Report version, commit, branch/push, and per-store binary/processing/notes/screenshot
+state. Include exact store notes and 3–6 team bullets with changes and testing
+details. Identify partial completion accurately. Do not message testers or promote
+to production.

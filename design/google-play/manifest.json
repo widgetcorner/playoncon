@@ -1,0 +1,11 @@
+{
+  "locale": "en-US",
+  "image_type": "phoneScreenshots",
+  "screenshots": [
+    {"path": "01-all-sessions.png", "width": 1080, "height": 1920},
+    {"path": "02-my-schedule.png", "width": 1080, "height": 1920},
+    {"path": "03-event-detail.png", "width": 1080, "height": 1920},
+    {"path": "04-venue-map.png", "width": 1080, "height": 1920},
+    {"path": "05-info.png", "width": 1080, "height": 1920}
+  ]
+}
