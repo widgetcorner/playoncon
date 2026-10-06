@@ -31,7 +31,13 @@ class SchedulePage extends ConsumerWidget {
           title: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Schedule'),
+              Flexible(
+                child: Text(
+                  'Schedule',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               SizedBox(width: 10),
               BetaPill(),
             ],
@@ -49,7 +55,7 @@ class SchedulePage extends ConsumerWidget {
               onPressed: state.isSyncing
                   ? null
                   : () =>
-                      ref.read(scheduleRepositoryProvider.notifier).refresh(),
+                        ref.read(scheduleRepositoryProvider.notifier).refresh(),
             ),
           ],
           bottom: const TabBar(
@@ -59,19 +65,25 @@ class SchedulePage extends ConsumerWidget {
             ],
           ),
         ),
-        body: Column(
-          children: [
-            if (isOffline) const _OfflineBanner(),
-            if (state.errorMessage != null) _ErrorBanner(state.errorMessage!),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _EventList(events: allEvents, savedOnly: false),
-                  _EventList(events: allEvents, savedOnly: true),
-                ],
-              ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Column(
+              children: [
+                if (isOffline) const _OfflineBanner(),
+                if (state.errorMessage != null)
+                  _ErrorBanner(state.errorMessage!),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _EventList(events: allEvents, savedOnly: false),
+                      _EventList(events: allEvents, savedOnly: true),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -235,9 +247,9 @@ class _DayHeader extends StatelessWidget {
       child: Text(
         DateFormat('EEEE, MMMM d').format(date),
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
     if (!sticky) return row;
@@ -251,8 +263,9 @@ class _EventTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isSaved =
-        ref.watch(savedEventsProvider.select((s) => s.containsKey(event.id)));
+    final isSaved = ref.watch(
+      savedEventsProvider.select((s) => s.containsKey(event.id)),
+    );
     final timeFmt = DateFormat('h:mm a');
     final subtitleLine = [
       '${timeFmt.format(event.startTime)} – ${timeFmt.format(event.endTime)}',
@@ -279,9 +292,9 @@ class _EventTile extends ConsumerWidget {
         tooltip: isSaved ? 'Remove from My Schedule' : 'Save to My Schedule',
         onPressed: () => toggleSaved(context, ref, event),
       ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => EventDetailPage(event: event)),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => EventDetailPage(event: event))),
     );
   }
 }
@@ -294,11 +307,13 @@ class _OfflineBanner extends StatelessWidget {
       width: double.infinity,
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: const [
-        Icon(Icons.wifi_off, size: 18),
-        SizedBox(width: 8),
-        Text('Offline — showing cached schedule'),
-      ]),
+      child: Row(
+        children: const [
+          Icon(Icons.wifi_off, size: 18),
+          SizedBox(width: 8),
+          Expanded(child: Text('Offline — showing cached schedule')),
+        ],
+      ),
     );
   }
 }
@@ -314,8 +329,7 @@ class _ErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Text(
         'Sync error: $message',
-        style:
-            TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
       ),
     );
   }
@@ -326,7 +340,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(32),
         child: Text(
           'No events yet. Pull to refresh once the schedule URL is set.',
@@ -343,7 +357,7 @@ class _SavedEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

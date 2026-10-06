@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui show TextDirection;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +19,7 @@ import '../../services/locations_store.dart';
 import '../../services/map_georeference.dart';
 import '../../services/schedule_repository.dart';
 import '../../theme/poc_theme.dart';
+import '../../widgets/apple_layout_boundary.dart';
 import 'venue_map_data.dart';
 
 const _mapAsset = AssetImage('assets/images/venue-map.png');
@@ -96,10 +96,13 @@ class _MapBodyState extends ConsumerState<_MapBody>
   );
   Animation<Matrix4>? _focusTween;
   Size? _viewport;
+  final GlobalKey _viewportKey = GlobalKey();
+  Offset _viewportOrigin = Offset.zero;
+  bool _originCheckScheduled = false;
 
   // Letterboxed base-image rect within the viewport (recomputed each layout).
   double _boardW = 0, _boardH = 0, _boardDx = 0, _boardDy = 0;
-  // Cached label text metrics (constant font → measure once per name).
+  // Invalidated when text scaling or direction changes.
   final Map<String, Size> _labelSizeCache = {};
 
   // "You are here" blue dot.
@@ -140,6 +143,12 @@ class _MapBodyState extends ConsumerState<_MapBody>
       if (mounted) setState(() => _imageSize = const Size(1500, 1150));
     });
     _stream!.addListener(_listener!);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _labelSizeCache.clear();
   }
 
   @override
@@ -199,6 +208,11 @@ class _MapBodyState extends ConsumerState<_MapBody>
   }
 
   void _animateToMatrix(Matrix4 target) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _focusAnim.stop();
+      _transform.value = target;
+      return;
+    }
     _focusTween = Matrix4Tween(begin: _transform.value, end: target).animate(
       CurvedAnimation(parent: _focusAnim, curve: Curves.easeInOutCubic),
     );
@@ -235,8 +249,12 @@ class _MapBodyState extends ConsumerState<_MapBody>
 
     final cx = dx + nx * w;
     final cy = dy + ny * h;
-    final tx = (vw / 2 - scale * cx).clamp(vw - scale * vw, 0.0).toDouble();
-    final ty = (vh / 2 - scale * cy).clamp(vh - scale * vh, 0.0).toDouble();
+    final tx = scale < 1
+        ? vw * (1 - scale) / 2
+        : (vw / 2 - scale * cx).clamp(vw - scale * vw, 0.0).toDouble();
+    final ty = scale < 1
+        ? vh * (1 - scale) / 2
+        : (vh / 2 - scale * cy).clamp(vh - scale * vh, 0.0).toDouble();
     // viewport = scale * child + translation. Built directly to avoid the
     // deprecated Matrix4.translate/scale helpers.
     return Matrix4.identity()
@@ -750,57 +768,171 @@ class _MapBodyState extends ConsumerState<_MapBody>
                   Expanded(child: _buildEditorBoard(imageRatio)),
                 ],
               )
-            : Stack(
-                children: [
-                  Positioned.fill(
-                      child: _buildViewerBoard(imageRatio, dotNorm, carts)),
-                  // Controls: Overview/Detail pill + recenter FAB (top-right).
-                  // Hidden in calibration mode (the HUD takes over the top).
-                  if (!_calibrating)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: _MapControls(
-                        overview: _overview,
-                        locationOn: _locationOn,
-                        onToggleOverview: _toggleOverview,
-                        onLocate: _onLocatePressed,
+            : LayoutBuilder(
+                key: _viewportKey,
+                builder: (context, constraints) {
+                  final regions = _overlayRegions(context, constraints.biggest);
+                  final controlsRegion = regions.controls;
+                  final cardRegion = regions.card;
+                  return Stack(
+                    children: [
+                      Positioned.fill(
+                        child: _buildViewerBoard(imageRatio, dotNorm, carts),
                       ),
-                    ),
-                  // Calibration HUD: live GPS + instructions (top of screen).
-                  if (_calibrating)
-                    Positioned(
-                      top: 12,
-                      left: 10,
-                      right: 10,
-                      child: _CalibrationHud(
-                        position: ref.watch(currentPositionProvider).value,
-                        pointCount: calibrationCount,
-                      ),
-                    ),
-                  // Info sheet (bottom) when a pin is selected (Detail only).
-                  // Hidden in calibration mode — pins record instead of opening.
-                  if (!_calibrating && selectedLoc != null && !_overview)
-                    Positioned(
-                      left: 10,
-                      right: 10,
-                      bottom: 10,
-                      child: _VenueInfoSheet(
-                        location: selectedLoc,
-                        meta: venueMetaFor(selectedLoc.key),
-                        status: selectedStatus,
-                        onClose: () =>
-                            setState(() => _selectedVenueKey = null),
-                      ),
-                    ),
-                ],
+                      // Related map controls share one row, clear of the card.
+                      // Hidden in calibration mode (the HUD takes over the top).
+                      if (!_calibrating)
+                        Positioned(
+                          top: controlsRegion.top + 12,
+                          right:
+                              constraints.maxWidth - controlsRegion.right + 12,
+                          child: _MapControls(
+                            compact:
+                                controlsRegion.width < 360 ||
+                                controlsRegion.height < 280 ||
+                                MediaQuery.textScalerOf(context).scale(12.5) >
+                                    20,
+                            overview: _overview,
+                            locationOn: _locationOn,
+                            onToggleOverview: _toggleOverview,
+                            onLocate: _onLocatePressed,
+                          ),
+                        ),
+                      // Calibration HUD: live GPS + instructions (top of screen).
+                      if (_calibrating)
+                        Positioned(
+                          top: controlsRegion.top + 12,
+                          left: controlsRegion.left + 10,
+                          right:
+                              constraints.maxWidth - controlsRegion.right + 10,
+                          child: _CalibrationHud(
+                            position: ref.watch(currentPositionProvider).value,
+                            pointCount: calibrationCount,
+                          ),
+                        ),
+                      // Info sheet (bottom) when a pin is selected (Detail only).
+                      // Hidden in calibration mode — pins record instead of opening.
+                      if (!_calibrating && selectedLoc != null && !_overview)
+                        Positioned(
+                          left: cardRegion.left + 10,
+                          right: constraints.maxWidth - cardRegion.right + 10,
+                          bottom:
+                              constraints.maxHeight - cardRegion.bottom + 10,
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: 560,
+                                maxHeight:
+                                    (cardRegion.height -
+                                            (cardRegion == controlsRegion
+                                                ? 84
+                                                : 20))
+                                        .clamp(0.0, 320.0),
+                              ),
+                              child: _VenueInfoSheet(
+                                location: selectedLoc,
+                                meta: venueMetaFor(selectedLoc.key),
+                                status: selectedStatus,
+                                onClose: () =>
+                                    setState(() => _selectedVenueKey = null),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
       ),
     );
   }
 
+  /// Only floating UI uses fold-separated regions. The artwork, map gestures,
+  /// and projected pins always retain the entire viewport.
+  ({Rect controls, Rect card}) _overlayRegions(
+    BuildContext context,
+    Size size,
+  ) {
+    // Switching the native rail edge can move this viewport without changing
+    // its size or MediaQuery. Subscribe so that move refreshes its scene origin.
+    AppleReservedRegions.maybeOf(context);
+    final media = MediaQuery.of(context);
+    final viewport = Offset.zero & size;
+    if (media.displayFeatures.isEmpty) {
+      return (controls: viewport, card: viewport);
+    }
+    _measureViewportOrigin();
+    final obstacles = DisplayFeatureSubScreen.avoidBounds(media)
+        .map((frame) => frame.shift(-_viewportOrigin))
+        .where(
+          (frame) =>
+              frame.right >= 0 &&
+              frame.left <= size.width &&
+              frame.bottom >= 0 &&
+              frame.top <= size.height,
+        )
+        // Keep zero-width/height folds; they still divide the display.
+        .map((frame) => frame.intersect(viewport));
+    final regions = DisplayFeatureSubScreen.subScreensInBounds(
+      viewport,
+      obstacles,
+    ).where((region) => !region.isEmpty).toList();
+    if (regions.isEmpty) return (controls: viewport, card: viewport);
+
+    // Avoid selecting a thin sliver for controls when another usable region
+    // is available. These are content-fit checks, not device identification.
+    final usable = regions
+        .where((r) => r.width >= 160 && r.height >= 100)
+        .toList();
+    final choices = usable.isEmpty ? regions : usable;
+    final controls = choices.reduce(
+      (a, b) => b.top < a.top || (b.top == a.top && b.right > a.right) ? b : a,
+    );
+    final card = choices.reduce(
+      (a, b) =>
+          b.bottom > a.bottom || (b.bottom == a.bottom && b.width > a.width)
+          ? b
+          : a,
+    );
+    return (controls: controls, card: card);
+  }
+
+  void _measureViewportOrigin() {
+    if (_originCheckScheduled) return;
+    _originCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _originCheckScheduled = false;
+      if (!mounted) return;
+      final box = _viewportKey.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) return;
+      final origin = box.localToGlobal(Offset.zero);
+      if (origin != _viewportOrigin) {
+        setState(() => _viewportOrigin = origin);
+      }
+    });
+  }
+
   void _captureLetterbox(double cw, double ch, double imageRatio) {
-    _viewport = Size(cw, ch);
+    if (cw <= 0 || ch <= 0) return;
+    final nextViewport = Size(cw, ch);
+    final previousViewport = _viewport;
+    Offset? previousCenter;
+    final scale = _transform.value.getMaxScaleOnAxis();
+    if (previousViewport != null &&
+        previousViewport != nextViewport &&
+        _boardW > 0 &&
+        _boardH > 0) {
+      // A transform is in viewport pixels. Carry its center in map coordinates
+      // into the new letterbox instead of reusing the old translation.
+      final center = _transform.toScene(previousViewport.center(Offset.zero));
+      previousCenter = Offset(
+        (center.dx - _boardDx) / _boardW,
+        (center.dy - _boardDy) / _boardH,
+      );
+      _focusAnim.stop();
+    }
+    _viewport = nextViewport;
     final containerRatio = cw / ch;
     if (containerRatio > imageRatio) {
       _boardH = ch;
@@ -812,6 +944,16 @@ class _MapBodyState extends ConsumerState<_MapBody>
       _boardH = _boardW / imageRatio;
       _boardDx = 0;
       _boardDy = (ch - _boardH) / 2;
+    }
+    if (previousCenter != null) {
+      final center = previousCenter;
+      // Updating the controller during layout would rebuild its listeners
+      // mid-frame. Apply once layout is complete and ignore superseded sizes.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _viewport != nextViewport) return;
+        final target = _matrixForNormalized(center.dx, center.dy, scale);
+        if (target != null) _transform.value = target;
+      });
     }
   }
 
@@ -877,7 +1019,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
         });
       }
 
-      return Stack(children: [
+      // Pin labels may extend beyond their positioned overlay. Clip the full
+      // viewport so their paint cannot escape into adjacent navigation chrome.
+      return ClipRect(child: Stack(children: [
         InteractiveViewer(
           transformationController: _transform,
           maxScale: 3,
@@ -902,7 +1046,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
             builder: (context, _) => _buildPinOverlay(cw, ch, dotNorm, carts),
           ),
         ),
-      ]);
+      ]));
     });
   }
 
@@ -934,13 +1078,14 @@ class _MapBodyState extends ConsumerState<_MapBody>
   }
 
   Size _labelSize(String text) => _labelSizeCache.putIfAbsent(text, () {
-        final tp = TextPainter(
-          text: TextSpan(text: text, style: _kLabelTextStyle),
-          maxLines: 1,
-          textDirection: ui.TextDirection.ltr,
-        )..layout();
-        return Size(tp.width, tp.height);
-      });
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: _kLabelTextStyle),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    return Size(tp.width, tp.height);
+  });
 
   Widget _buildPinOverlay(
     double cw,
@@ -1039,6 +1184,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
         left: p.center.dx - _PinIcon.hit / 2,
         top: p.center.dy - _PinIcon.hit / 2,
         child: _PinIcon(
+          label: p.location.displayName,
           color: p.color,
           icon: p.meta.icon,
           selected: p.selected,
@@ -1054,10 +1200,12 @@ class _MapBodyState extends ConsumerState<_MapBody>
           left: lr.left,
           top: lr.top,
           child: IgnorePointer(
-            child: _PinLabel(
-              text: p.location.displayName,
-              color: p.color,
-              selected: p.selected,
+            child: ExcludeSemantics(
+              child: _PinLabel(
+                text: p.location.displayName,
+                color: p.color,
+                selected: p.selected,
+              ),
             ),
           ),
         );
@@ -1254,12 +1402,14 @@ class _PinIcon extends StatelessWidget {
   static const double hit = 44; // ≥44pt tap target (iOS HIG / small Android)
 
   final Color color;
+  final String label;
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
   const _PinIcon({
     required this.color,
+    required this.label,
     required this.icon,
     required this.selected,
     required this.onTap,
@@ -1271,29 +1421,34 @@ class _PinIcon extends StatelessWidget {
     final iconSize = selected ? 19.0 : 16.0;
     final borderWidth = selected ? 3.0 : 2.0;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: hit,
-        height: hit,
-        child: Center(
-          child: Container(
-            width: circle,
-            height: circle,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-              border: Border.all(color: Colors.white, width: borderWidth),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0x593A2818), // rgba(58,40,24,0.35)
-                  blurRadius: selected ? 8 : 3,
-                  offset: Offset(0, selected ? 3 : 1),
-                ),
-              ],
+    return Semantics(
+      label: label,
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: hit,
+          height: hit,
+          child: Center(
+            child: Container(
+              width: circle,
+              height: circle,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                border: Border.all(color: Colors.white, width: borderWidth),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x593A2818), // rgba(58,40,24,0.35)
+                    blurRadius: selected ? 8 : 3,
+                    offset: Offset(0, selected ? 3 : 1),
+                  ),
+                ],
+              ),
+              child: Icon(icon, size: iconSize, color: Colors.white),
             ),
-            child: Icon(icon, size: iconSize, color: Colors.white),
           ),
         ),
       ),
@@ -1344,15 +1499,17 @@ class _PinLabel extends StatelessWidget {
   }
 }
 
-/// Top-right stacked controls: the Overview/Detail pill and a forest circular
-/// recenter FAB.
+/// A compact group of map controls, above the map content. Icon-only controls
+/// keep a practical hit target in short or narrow windows and at large text.
 class _MapControls extends StatelessWidget {
+  final bool compact;
   final bool overview;
   final bool locationOn;
   final VoidCallback onToggleOverview;
   final VoidCallback onLocate;
 
   const _MapControls({
+    required this.compact,
     required this.overview,
     required this.locationOn,
     required this.onToggleOverview,
@@ -1363,57 +1520,87 @@ class _MapControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final pal = PocPalette.of(context);
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    final zoomLabel = overview ? 'Detail' : 'Overview';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Material(
           color: pal.controlSurface,
           borderRadius: BorderRadius.circular(999),
           elevation: 3,
           shadowColor: const Color(0x593A2818),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: onToggleOverview,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    overview ? Icons.zoom_in : Icons.zoom_out_map,
-                    size: 16,
-                    color: pal.controlIcon,
+          child: Tooltip(
+            message: zoomLabel,
+            excludeFromSemantics: true,
+            child: Semantics(
+              button: true,
+              label: zoomLabel,
+              onTap: onToggleOverview,
+              excludeSemantics: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: onToggleOverview,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    overview ? 'Detail' : 'Overview',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                      color: onSurface,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 13),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          overview ? Icons.zoom_in : Icons.zoom_out_map,
+                          size: compact ? 22 : 16,
+                          color: pal.controlIcon,
+                        ),
+                        if (!compact) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            zoomLabel,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: onSurface,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(width: 8),
         Material(
           color: pal.fabBackground,
           shape: const CircleBorder(),
           elevation: 3,
           shadowColor: const Color(0x593A2818),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onLocate,
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Icon(
-                locationOn ? Icons.my_location : Icons.location_searching,
-                color: pal.fabForeground,
-                size: 22,
+          child: Tooltip(
+            message: locationOn ? 'Center on my location' : 'Show my location',
+            excludeFromSemantics: true,
+            child: Semantics(
+              button: true,
+              label: locationOn ? 'Center on my location' : 'Show my location',
+              onTap: onLocate,
+              excludeSemantics: true,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onLocate,
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Icon(
+                    locationOn ? Icons.my_location : Icons.location_searching,
+                    color: pal.fabForeground,
+                    size: 22,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1446,79 +1633,82 @@ class _VenueInfoSheet extends StatelessWidget {
     return Material(
       color: pal.sheetSurface,
       borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       elevation: 6,
       shadowColor: const Color(0x593A2818),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: pal.sheetBorder),
-        ),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: cat.colorFor(Theme.of(context).brightness),
-                    borderRadius: BorderRadius.circular(12),
+      child: SingleChildScrollView(
+        key: ValueKey('venue-info-${location.key}'),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: pal.sheetBorder),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: cat.colorFor(Theme.of(context).brightness),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(meta.icon, color: Colors.white, size: 22),
                   ),
-                  child: Icon(meta.icon, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        location.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: onSurface,
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          location.displayName,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: onSurface,
+                          ),
                         ),
-                      ),
-                      Text(
-                        meta.blurb,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: pal.textSoft,
+                        Text(
+                          meta.blurb,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: pal.textSoft,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    iconSize: 18,
+                    color: pal.textSoft,
+                    tooltip: 'Close',
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              if (status != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: pal.sheetDivider,
                   ),
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 18,
-                  color: pal.textSoft,
-                  tooltip: 'Close',
-                  onPressed: onClose,
-                  icon: const Icon(Icons.close),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _StatusLine(status: status),
                 ),
               ],
-            ),
-            if (status != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Divider(
-                    height: 1, thickness: 1, color: pal.sheetDivider),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _StatusLine(status: status),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1571,8 +1761,6 @@ class _StatusLine extends StatelessWidget {
         Flexible(
           child: Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,

@@ -10,7 +10,10 @@ import '../../services/saved_events_store.dart';
 /// reminder choice via a modal dialog and schedules it. Dismissing the dialog
 /// cancels the save entirely.
 Future<void> toggleSaved(
-    BuildContext context, WidgetRef ref, Event event) async {
+  BuildContext context,
+  WidgetRef ref,
+  Event event,
+) async {
   final store = ref.read(savedEventsProvider.notifier);
 
   if (store.isSaved(event.id)) {
@@ -30,9 +33,9 @@ Future<void> toggleSaved(
   await notifications.schedule(event, choice);
 
   if (context.mounted && !choice.isNone) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Saved with a reminder')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Saved with a reminder')));
   }
 }
 
@@ -80,45 +83,87 @@ Future<Reminder?> _showReminderDialog(BuildContext context, WidgetRef ref) {
 
 /// A simple 1–120 minute wheel selector for a custom reminder lead time.
 Future<int?> _showMinutePicker(BuildContext context, int initial) {
-  var selected = initial.clamp(1, 120);
   return showModalBottomSheet<int>(
     context: context,
-    builder: (ctx) => SafeArea(
-      child: SizedBox(
-        height: 320,
-        child: StatefulBuilder(
-          builder: (ctx, setSheet) => Column(
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => _MinutePicker(initial: initial),
+  );
+}
+
+class _MinutePicker extends StatefulWidget {
+  final int initial;
+  const _MinutePicker({required this.initial});
+
+  @override
+  State<_MinutePicker> createState() => _MinutePickerState();
+}
+
+class _MinutePickerState extends State<_MinutePicker> {
+  late int _selected;
+  late final FixedExtentScrollController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.initial.clamp(1, 120);
+    _controller = FixedExtentScrollController(initialItem: _selected - 1);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Keep the wheel and its selection mounted as the window changes. The
+    // surrounding scroll view keeps the confirmation reachable in short views.
+    final itemExtent = MediaQuery.textScalerOf(context).scale(22) + 14;
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 480),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 14),
-              Text('Remind me before the event',
-                  style: Theme.of(ctx).textTheme.titleMedium),
+              Text(
+                'Remind me before the event',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 4),
               Text(
-                _minutesLabel(selected),
-                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(ctx).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                _minutesLabel(_selected),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              Expanded(
+              SizedBox(
+                height: itemExtent * 5,
                 child: CupertinoPicker(
-                  scrollController:
-                      FixedExtentScrollController(initialItem: selected - 1),
-                  itemExtent: 36,
+                  scrollController: _controller,
+                  itemExtent: itemExtent,
                   onSelectedItemChanged: (i) =>
-                      setSheet(() => selected = i + 1),
+                      setState(() => _selected = i + 1),
                   children: [
                     for (var m = 1; m <= 120; m++) Center(child: Text('$m')),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(ctx, selected),
-                    child: const Text('Set reminder'),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context, _selected),
+                  child: const Text(
+                    'Set reminder',
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -126,8 +171,8 @@ Future<int?> _showMinutePicker(BuildContext context, int initial) {
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ReminderRow extends StatelessWidget {
@@ -146,11 +191,15 @@ class _ReminderRow extends StatelessWidget {
       onPressed: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 16),
-          Text(label, style: Theme.of(context).textTheme.bodyLarge),
-        ]),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+            ),
+          ],
+        ),
       ),
     );
   }

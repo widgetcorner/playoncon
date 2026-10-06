@@ -5,19 +5,29 @@ import 'app_navigation.dart';
 import 'features/info/info_page.dart';
 import 'features/map/venue_map_page.dart';
 import 'features/schedule/schedule_page.dart';
+import 'services/apple_layout.dart';
 import 'theme/poc_theme.dart';
+import 'widgets/adaptive_navigation.dart';
+import 'widgets/apple_layout_boundary.dart';
 
-class PlayOnConApp extends StatelessWidget {
+class PlayOnConApp extends ConsumerWidget {
   const PlayOnConApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final layout =
+        ref.watch(appleLayoutProvider).valueOrNull ??
+        const AppleLayout.unavailable();
     return MaterialApp(
       title: 'Play On Con',
       debugShowCheckedModeBanner: false,
       theme: PocTheme.light(),
       darkTheme: PocTheme.dark(),
       themeMode: ThemeMode.system,
+      builder: (context, child) => ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: AppleLayoutBoundary(layout: layout, child: child!),
+      ),
       home: const RootShell(),
     );
   }
@@ -31,28 +41,20 @@ class RootShell extends ConsumerStatefulWidget {
 }
 
 class _RootShellState extends ConsumerState<RootShell> {
-  static const _pages = [
-    SchedulePage(),
-    VenueMapPage(),
-    InfoPage(),
-  ];
+  static const _pages = [SchedulePage(), VenueMapPage(), InfoPage()];
 
   @override
   Widget build(BuildContext context) {
     final index = ref.watch(selectedTabProvider);
-    return Scaffold(
-      body: IndexedStack(index: index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) =>
-            ref.read(selectedTabProvider.notifier).set(i),
-        destinations: const [
-          NavigationDestination(
-              icon: Icon(Icons.calendar_month), label: 'Schedule'),
-          NavigationDestination(icon: Icon(Icons.map), label: 'Map'),
-          NavigationDestination(icon: Icon(Icons.info_outline), label: 'Info'),
-        ],
-      ),
+    final layout =
+        ref.watch(appleLayoutProvider).valueOrNull ??
+        const AppleLayout.unavailable();
+    return AdaptiveNavigationScaffold(
+      barEdge: layout.barEdge,
+      selectedIndex: index,
+      onDestinationSelected: (i) =>
+          ref.read(selectedTabProvider.notifier).set(i),
+      pages: _pages,
     );
   }
 }

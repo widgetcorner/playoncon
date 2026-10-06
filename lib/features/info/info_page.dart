@@ -24,88 +24,98 @@ class InfoPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Info')),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        children: [
-          const _LogoHeader(),
-          const _CountdownCard(),
-          ListTile(
-            leading: const Icon(Icons.location_on_outlined),
-            title: const Text(AppConfig.venueName),
-            subtitle: const Text(AppConfig.venueCityState),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openVenueInMaps(),
-          ),
-          if (AppConfig.hasScheduleViewUrl) ...[
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Printable schedule'),
-              subtitle: const Text('Opens the full Google Sheet'),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => launchUrl(
-                Uri.parse(AppConfig.scheduleViewUrl),
-                mode: LaunchMode.externalApplication,
-              ),
-            ),
-          ],
-          if (AppConfig.hasProgramUrl) ...[
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.menu_book_outlined),
-              title: const Text('Program'),
-              subtitle: const Text('Full event descriptions and details'),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => launchUrl(
-                Uri.parse(AppConfig.programUrl),
-                mode: LaunchMode.externalApplication,
-              ),
-            ),
-          ],
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.chat_bubble_outline),
-            title: const Text('Join the Discord'),
-            subtitle: AppConfig.hasDiscordUrl
-                ? const Text('Opens in Discord or browser')
-                : const Text('Discord URL not configured'),
-            enabled: AppConfig.hasDiscordUrl,
-            onTap: AppConfig.hasDiscordUrl
-                ? () => launchUrl(
-                      Uri.parse(AppConfig.discordInviteUrl),
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              children: [
+                const _LogoHeader(),
+                const _CountdownCard(),
+                ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: const Text(AppConfig.venueName),
+                  subtitle: const Text(AppConfig.venueCityState),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openVenueInMaps(),
+                ),
+                if (AppConfig.hasScheduleViewUrl) ...[
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('Printable schedule'),
+                    subtitle: const Text('Opens the full Google Sheet'),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => launchUrl(
+                      Uri.parse(AppConfig.scheduleViewUrl),
                       mode: LaunchMode.externalApplication,
-                    )
-                : null,
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.mail_outline),
-            title: const Text('Contact'),
-            subtitle: const Text('Reach a director or send app feedback'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ContactPage()),
+                    ),
+                  ),
+                ],
+                if (AppConfig.hasProgramUrl) ...[
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.menu_book_outlined),
+                    title: const Text('Program'),
+                    subtitle: const Text('Full event descriptions and details'),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => launchUrl(
+                      Uri.parse(AppConfig.programUrl),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                ],
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.chat_bubble_outline),
+                  title: const Text('Join the Discord'),
+                  subtitle: AppConfig.hasDiscordUrl
+                      ? const Text('Opens in Discord or browser')
+                      : const Text('Discord URL not configured'),
+                  enabled: AppConfig.hasDiscordUrl,
+                  onTap: AppConfig.hasDiscordUrl
+                      ? () => launchUrl(
+                          Uri.parse(AppConfig.discordInviteUrl),
+                          mode: LaunchMode.externalApplication,
+                        )
+                      : null,
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.mail_outline),
+                  title: const Text('Contact'),
+                  subtitle: const Text('Reach a director or send app feedback'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ContactPage()),
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.cloud_download),
+                  title: const Text('Refresh schedule'),
+                  subtitle: Text('Last sync: $lastSyncText'),
+                  trailing: state.isSyncing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  onTap: state.isSyncing
+                      ? null
+                      : () => ref
+                            .read(scheduleRepositoryProvider.notifier)
+                            .refresh(),
+                ),
+                const Divider(),
+                const _VersionTile(),
+              ],
             ),
           ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.cloud_download),
-            title: const Text('Refresh schedule'),
-            subtitle: Text('Last sync: $lastSyncText'),
-            trailing: state.isSyncing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.refresh),
-            onTap: state.isSyncing
-                ? null
-                : () =>
-                    ref.read(scheduleRepositoryProvider.notifier).refresh(),
-          ),
-          const Divider(),
-          const _VersionTile(),
-        ],
+        ),
       ),
     );
   }
@@ -209,9 +219,7 @@ class BetaPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: brand.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: brand.withValues(alpha: 0.30),
-        ),
+        border: Border.all(color: brand.withValues(alpha: 0.30)),
       ),
       child: Text(
         'BETA',
@@ -289,9 +297,7 @@ class _CountdownCardState extends State<_CountdownCard> {
         color: pal.brand.withValues(alpha: 0.06),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: pal.brand.withValues(alpha: 0.16),
-          ),
+          side: BorderSide(color: pal.brand.withValues(alpha: 0.16)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -306,18 +312,30 @@ class _CountdownCardState extends State<_CountdownCard> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _CountdownUnit(value: days, label: days == 1 ? 'day' : 'days'),
-                  const _CountdownSep(),
-                  _CountdownUnit(value: hours, label: 'h', pad: true),
-                  const _CountdownSep(),
-                  _CountdownUnit(value: minutes, label: 'm', pad: true),
-                  const _CountdownSep(),
-                  _CountdownUnit(value: seconds, label: 's', pad: true),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final showSeparators =
+                      constraints.maxWidth >=
+                      300 * MediaQuery.textScalerOf(context).scale(28) / 28;
+                  return Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    spacing: showSeparators ? 0 : 20,
+                    runSpacing: 8,
+                    children: [
+                      _CountdownUnit(
+                        value: days,
+                        label: days == 1 ? 'day' : 'days',
+                      ),
+                      if (showSeparators) const _CountdownSep(),
+                      _CountdownUnit(value: hours, label: 'h', pad: true),
+                      if (showSeparators) const _CountdownSep(),
+                      _CountdownUnit(value: minutes, label: 'm', pad: true),
+                      if (showSeparators) const _CountdownSep(),
+                      _CountdownUnit(value: seconds, label: 's', pad: true),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -353,10 +371,7 @@ class _CountdownUnit extends StatelessWidget {
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: pal.textSoft),
-        ),
+        Text(label, style: TextStyle(fontSize: 11, color: pal.textSoft)),
       ],
     );
   }

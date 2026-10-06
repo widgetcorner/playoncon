@@ -58,17 +58,25 @@ class ContactPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Contact')),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        children: [
-          for (int i = 0; i < _conContacts.length; i++) ...[
-            if (i > 0) const Divider(height: 1),
-            _ContactTile(contact: _conContacts[i]),
-          ],
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          _ContactTile(contact: _appFeedback),
-        ],
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              children: [
+                for (int i = 0; i < _conContacts.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _ContactTile(contact: _conContacts[i]),
+                ],
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                _ContactTile(contact: _appFeedback),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
