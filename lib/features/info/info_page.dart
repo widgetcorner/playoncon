@@ -10,6 +10,7 @@ import '../../config/app_config.dart';
 import '../../services/app_clock.dart';
 import '../../services/schedule_repository.dart';
 import '../../theme/poc_theme.dart';
+import '../../widgets/accessible_progress_indicator.dart';
 import 'contact_page.dart';
 
 class InfoPage extends ConsumerWidget {
@@ -102,7 +103,10 @@ class InfoPage extends ConsumerWidget {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: AccessibleProgressIndicator(
+                            label: 'Refreshing schedule',
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Icon(Icons.refresh),
                   onTap: state.isSyncing
@@ -166,6 +170,7 @@ class _LogoHeader extends StatelessWidget {
                 width: 180,
                 height: 180,
                 fit: BoxFit.cover,
+                excludeFromSemantics: true,
               ),
             ),
           ),
@@ -210,11 +215,13 @@ class _VersionTile extends StatelessWidget {
 /// Small "BETA" badge surfaced near the app name so attendees know this
 /// build is a work-in-progress companion, not the final official app.
 class BetaPill extends StatelessWidget {
-  const BetaPill({super.key});
+  const BetaPill({super.key, this.foregroundColor});
+
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
-    final brand = PocPalette.of(context).brand;
+    final brand = foregroundColor ?? PocPalette.of(context).brand;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -290,55 +297,64 @@ class _CountdownCardState extends ConsumerState<_CountdownCard> {
     final minutes = _remaining.inMinutes % 60;
     final seconds = _remaining.inSeconds % 60;
     final pal = PocPalette.of(context);
+    final remainingLabel = days == 0 && hours == 0 && minutes == 0
+        ? 'less than a minute'
+        : '$days ${days == 1 ? 'day' : 'days'}, '
+              '$hours ${hours == 1 ? 'hour' : 'hours'}, '
+              '$minutes ${minutes == 1 ? 'minute' : 'minutes'}';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: Card(
-        elevation: 0,
-        color: pal.brand.withValues(alpha: 0.06),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: pal.brand.withValues(alpha: 0.16)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-          child: Column(
-            children: [
-              Text(
-                'Play On Con starts in',
-                style: TextStyle(
-                  fontSize: 13,
-                  letterSpacing: 0.5,
-                  color: pal.textSoft,
+      child: Semantics(
+        label: 'Play On Con starts in $remainingLabel',
+        excludeSemantics: true,
+        child: Card(
+          elevation: 0,
+          color: pal.brand.withValues(alpha: 0.06),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: pal.brand.withValues(alpha: 0.16)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            child: Column(
+              children: [
+                Text(
+                  'Play On Con starts in',
+                  style: TextStyle(
+                    fontSize: 13,
+                    letterSpacing: 0.5,
+                    color: pal.textSoft,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final showSeparators =
-                      constraints.maxWidth >=
-                      300 * MediaQuery.textScalerOf(context).scale(28) / 28;
-                  return Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.end,
-                    spacing: showSeparators ? 0 : 20,
-                    runSpacing: 8,
-                    children: [
-                      _CountdownUnit(
-                        value: days,
-                        label: days == 1 ? 'day' : 'days',
-                      ),
-                      if (showSeparators) const _CountdownSep(),
-                      _CountdownUnit(value: hours, label: 'h', pad: true),
-                      if (showSeparators) const _CountdownSep(),
-                      _CountdownUnit(value: minutes, label: 'm', pad: true),
-                      if (showSeparators) const _CountdownSep(),
-                      _CountdownUnit(value: seconds, label: 's', pad: true),
-                    ],
-                  );
-                },
-              ),
-            ],
+                const SizedBox(height: 8),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final showSeparators =
+                        constraints.maxWidth >=
+                        300 * MediaQuery.textScalerOf(context).scale(28) / 28;
+                    return Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.end,
+                      spacing: showSeparators ? 0 : 20,
+                      runSpacing: 8,
+                      children: [
+                        _CountdownUnit(
+                          value: days,
+                          label: days == 1 ? 'day' : 'days',
+                        ),
+                        if (showSeparators) const _CountdownSep(),
+                        _CountdownUnit(value: hours, label: 'h', pad: true),
+                        if (showSeparators) const _CountdownSep(),
+                        _CountdownUnit(value: minutes, label: 'm', pad: true),
+                        if (showSeparators) const _CountdownSep(),
+                        _CountdownUnit(value: seconds, label: 's', pad: true),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

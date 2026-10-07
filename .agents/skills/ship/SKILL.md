@@ -37,8 +37,8 @@ artifact verification, store commands, metadata retries, and iOS export recovery
   status if an upload result is uncertain. Resume only unfinished work when
   source and artifacts are unchanged.
 
-Keep a record under gitignored `build/releases/<version>/`: canonical notes,
-built-source revision/diff, artifact paths/hashes, and per-store results. Update
+Keep a record under gitignored `build/releases/<version>/`: per-platform canonical
+notes, built-source revision/diff, artifact paths/hashes, and per-store results. Update
 each completed step; record pending metadata separately from accepted binaries.
 Never store credentials there. A notes failure or failed push is not a new release.
 
@@ -103,14 +103,22 @@ Do not revoke/replace certificates or reuse a stale temporary export plist.
 
 ## 4. Upload binaries and store notes
 
-Prepare canonical user-facing `en-US` notes from changes since the last shipped
-source, including already committed changes before this bump. Reuse user-supplied
-wording. Keep all UTF-8 text under 500 characters including bullets/newlines.
-For a build-only release write a truthful brief note.
+Prepare separate canonical user-facing `en-US` notes for iOS and Android from
+changes since the last shipped source, including already committed changes
+before this bump. Each platform's notes must describe changes its users can
+experience. Android notes must not mention Apple-only changes, such as iPhone
+Duo layouts or iOS launch behavior; iOS notes must likewise omit Android-only
+work. Shared app improvements can appear in both. Reuse applicable user-supplied
+wording. Keep each UTF-8 text between 1 and 500 characters including bullets and
+newlines. For a build-only release write a truthful brief note for each store.
 
-Save exact text in the release record. Prepare isolated Play metadata containing
-only `en-US/changelogs/<verified-version-code>.txt`; no `default.txt` or stale
-notes. Use the helper commands in the release reference.
+Save exact text as `notes-ios.txt` and `notes-android.txt` in the release record.
+Stage with `store_metadata.py prepare --ios-notes ... --android-notes ...`:
+TestFlight's `testflight.txt` must contain the iOS notes, and the isolated Play
+metadata must contain only `en-US/changelogs/<verified-version-code>.txt` with
+the Android notes; no `default.txt` or stale notes. The legacy `--notes` input is
+valid only when its text genuinely applies to both platforms. Use the helper
+commands in the release reference.
 
 After all requested builds/checks succeed, launch independent uploads concurrently
 when both stores were requested. In Codex use `Promise.allSettled` for independent
@@ -127,8 +135,9 @@ guard; the wrapper protects every commit attempt without changing installed gems
 
 After Apple accepts the IPA, the metadata helper publishes TestFlight What to Test
 for the exact app/marketing version/build, waits for Apple to expose it, and reads
-back `en-US` text. If unavailable, retain upload success and report notes pending.
-For Play, upload changelogs with the bundle and verify exact internal release text.
+back exact iOS `en-US` text from staged `testflight.txt`. If unavailable, retain
+upload success and report notes pending. For Play, upload the Android changelog
+with the bundle and verify internal release text against `notes-android.txt`.
 Preserve other locales, listing text, tester groups, and notification settings.
 
 For reviewed changed Play screenshots, run the images-only helper: compare hashes
@@ -179,6 +188,6 @@ can be reported separately while committing successful binary releases; keep
 their record until metadata completes.
 
 Report version, commit, branch/push, and per-store binary/processing/notes/screenshot
-state. Include exact store notes and 3–6 team bullets with changes and testing
-details. Identify partial completion accurately. Do not message testers or promote
+state. Include exact notes separately for each store and 3–6 team bullets with
+changes and testing details. Identify partial completion accurately. Do not message testers or promote
 to production.

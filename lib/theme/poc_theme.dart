@@ -180,11 +180,11 @@ class PocTheme {
       onPrimary: PocColors.cream,
       primaryContainer: Color(0xFFC9DDCC),
       onPrimaryContainer: PocColors.forestDark,
-      secondary: PocColors.saddle,
+      secondary: PocColors.saddleDark,
       onSecondary: PocColors.cream,
       secondaryContainer: Color(0xFFE2D2B8),
       onSecondaryContainer: PocColors.saddleDark,
-      tertiary: Color(0xFFB46A3F),
+      tertiary: Color(0xFF91512F),
       onTertiary: PocColors.cream,
       tertiaryContainer: Color(0xFFF2D7C2),
       onTertiaryContainer: Color(0xFF5A2F12),
@@ -199,7 +199,7 @@ class PocTheme {
       surfaceContainer: PocColors.creamSoft,
       surfaceContainerLow: Color(0xFFF4EEDF),
       surfaceContainerLowest: Colors.white,
-      outline: Color(0xFF8E7E63),
+      outline: Color(0xFF89795E),
       outlineVariant: Color(0xFFC8B996),
       inverseSurface: PocColors.ink,
       onInverseSurface: PocColors.cream,
@@ -231,7 +231,7 @@ class PocTheme {
         // selected label in colorScheme.primary (forest), which vanishes
         // against the matching background. Use the AppBar's cream foreground.
         labelColor: PocColors.cream,
-        unselectedLabelColor: PocColors.cream.withValues(alpha: 0.6),
+        unselectedLabelColor: PocColors.cream.withValues(alpha: 0.85),
         indicatorColor: PocColors.cream,
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -339,10 +339,9 @@ class PocTheme {
         ),
       ),
       tabBarTheme: TabBarThemeData(
-        // Moss reads on the deep-green AppBar where cream-on-forest did the
-        // job in light mode; unselected stays translucent cream.
+        // Both tab labels stay readable against the deep-green AppBar.
         labelColor: PocColors.moss,
-        unselectedLabelColor: PocColors.creamSoft.withValues(alpha: 0.55),
+        unselectedLabelColor: PocColors.creamSoft.withValues(alpha: 0.8),
         indicatorColor: PocColors.moss,
       ),
       navigationBarTheme: NavigationBarThemeData(

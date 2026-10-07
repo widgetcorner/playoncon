@@ -260,11 +260,114 @@ class MetadataTests(unittest.TestCase):
             notes.write_bytes("  Map is easier to read 🌲.  \r\nReminders are clearer.\r\n".encode())
             result = metadata.prepare(notes, "2026.10.6+28", root / "staged")
             canonical = metadata.canonical_notes(notes)
+            self.assertEqual(result["characters"], len(canonical))
             self.assertEqual(Path(result["testflightNotes"]).read_bytes(), canonical.encode())
             self.assertEqual((Path(result["playMetadata"]) / "en-US/changelogs/28.txt").read_bytes(), canonical.encode())
+            self.assertEqual(json.loads((root / "staged/manifest.json").read_text()), {
+                "version": "2026.10.6+28", "locale": "en-US", "notes": canonical})
             notes.write_text("x" * 501)
             with self.assertRaisesRegex(ValueError, "1–500"):
                 metadata.prepare(notes, "2026.10.6+28", root / "staged")
+
+    def test_platform_notes_normalize_independently_and_replace_shared_draft(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ios = root / "ios.txt"
+            android = root / "android.txt"
+            ios.write_bytes("  iPhone Duo layouts.  \r\nAccessibility improvements 🌲.\r\n".encode())
+            android.write_bytes("  Accessibility improvements 🌲.  \r\nClearer venue controls.\r\n".encode())
+            output = root / "staged"
+            metadata.prepare(ios, "2026.10.6+28", output)
+            result = metadata.prepare(None, "2026.10.6+28", output, ios_notes_path=ios, android_notes_path=android)
+            canonical_ios = metadata.canonical_notes(ios)
+            canonical_android = metadata.canonical_notes(android)
+            self.assertEqual(Path(result["testflightNotes"]).read_bytes(), canonical_ios.encode())
+            self.assertEqual((Path(result["playMetadata"]) / "en-US/changelogs/28.txt").read_bytes(), canonical_android.encode())
+            self.assertNotIn("Duo", canonical_android)
+            self.assertEqual(result["iosCharacters"], len(canonical_ios))
+            self.assertEqual(result["androidCharacters"], len(canonical_android))
+            self.assertEqual(json.loads((output / "manifest.json").read_text()), {
+                "version": "2026.10.6+28", "locale": "en-US", "iosNotes": canonical_ios, "androidNotes": canonical_android})
+            snapshot = {path.relative_to(output): path.read_bytes() for path in output.rglob("*") if path.is_file()}
+            metadata.prepare(None, "2026.10.6+28", output, ios_notes_path=ios, android_notes_path=android)
+            self.assertEqual({path.relative_to(output): path.read_bytes() for path in output.rglob("*") if path.is_file()}, snapshot)
+
+    def test_each_platform_notes_limit_validates_before_staging_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ios = root / "ios.txt"
+            android = root / "android.txt"
+            # Each platform may use the entire character budget independently.
+            ios.write_text("🌲" * 500, encoding="utf-8")
+            android.write_text("x" * 500, encoding="utf-8")
+            output = root / "staged"
+            metadata.prepare(None, "2026.10.6+28", output, ios_notes_path=ios, android_notes_path=android)
+            snapshot = {path.relative_to(output): path.read_bytes() for path in output.rglob("*") if path.is_file()}
+            for source in (ios, android):
+                original = source.read_bytes()
+                for invalid in ("", " \r\n\t ", "x" * 501, "Invalid\x01control"):
+                    with self.subTest(platform=source.stem, notes=repr(invalid[:20])):
+                        source.write_text(invalid, encoding="utf-8")
+                        with self.assertRaises(ValueError):
+                            metadata.prepare(None, "2026.10.6+28", output, ios_notes_path=ios, android_notes_path=android)
+                        fresh = root / "fresh"
+                        with self.assertRaises(ValueError):
+                            metadata.prepare(None, "2026.10.6+28", fresh, ios_notes_path=ios, android_notes_path=android)
+                        self.assertFalse(fresh.exists())
+                        self.assertEqual({path.relative_to(output): path.read_bytes() for path in output.rglob("*") if path.is_file()}, snapshot)
+                source.write_bytes(original)
+
+    def test_prepare_cli_accepts_shared_or_complete_platform_pair_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shared = root / "shared.txt"
+            ios = root / "ios.txt"
+            android = root / "android.txt"
+            for source, value in ((shared, "Shared changes"), (ios, "iPhone Duo and accessibility"), (android, "Accessibility improvements")):
+                source.write_text(value, encoding="utf-8")
+            command = [sys.executable, str(SCRIPTS / "store_metadata.py"), "prepare", "--version", "2026.10.6+28"]
+            for mode, options, expected_ios, expected_android in (
+                ("shared", ["--notes", str(shared)], shared.read_text(), shared.read_text()),
+                ("split", ["--ios-notes", str(ios), "--android-notes", str(android)], ios.read_text(), android.read_text()),
+            ):
+                result = subprocess.run([*command, *options, "--output", str(root / mode)], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                receipt = json.loads(result.stdout)
+                self.assertEqual(Path(receipt["testflightNotes"]).read_text(), expected_ios)
+                self.assertEqual((Path(receipt["playMetadata"]) / "en-US/changelogs/28.txt").read_text(), expected_android)
+            invalid_options = (
+                [], ["--ios-notes", str(ios)], ["--android-notes", str(android)],
+                ["--notes", str(shared), "--ios-notes", str(ios)],
+                ["--notes", str(shared), "--android-notes", str(android)],
+                ["--notes", str(shared), "--ios-notes", str(ios), "--android-notes", str(android)],
+            )
+            for index, options in enumerate(invalid_options):
+                with self.subTest(options=options):
+                    output = root / f"invalid-{index}"
+                    result = subprocess.run([*command, *options, "--output", str(output)], capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("ERROR:", result.stderr)
+                    self.assertFalse(output.exists())
+
+    def test_platform_notes_keep_version_locale_and_file_isolation_guards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ios = root / "ios.txt"
+            android = root / "android.txt"
+            ios.write_text("iOS changes")
+            android.write_text("Android changes")
+            output = root / "staged"
+            options = {"ios_notes_path": ios, "android_notes_path": android}
+            metadata.prepare(None, "2026.10.6+28", output, **options)
+            snapshot = {path.relative_to(output): path.read_bytes() for path in output.rglob("*") if path.is_file()}
+            for version, locale in (("2026.10.6+29", "en-US"), ("2026.10.7+28", "en-US"), ("2026.10.6+28", "fr-FR")):
+                with self.subTest(version=version, locale=locale):
+                    with self.assertRaisesRegex(ValueError, "stale/unrelated|another version/locale"):
+                        metadata.prepare(None, version, output, locale, **options)
+                    self.assertEqual({path.relative_to(output): path.read_bytes() for path in output.rglob("*") if path.is_file()}, snapshot)
+            (output / "play/en-US/changelogs/27.txt").write_text("Old notes")
+            with self.assertRaisesRegex(ValueError, "stale/unrelated"):
+                metadata.prepare(None, "2026.10.6+28", output, **options)
 
     def test_metadata_staging_refuses_other_version_and_unrelated_changelog(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -93,6 +93,8 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Offline — showing cached schedule'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('My Schedule'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('My Schedule'));
     await tester.pumpAndSettle();
     tester.view.physicalSize = const Size(600, 320);

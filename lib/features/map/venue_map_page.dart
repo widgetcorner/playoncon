@@ -20,6 +20,7 @@ import '../../services/locations_store.dart';
 import '../../services/map_georeference.dart';
 import '../../services/schedule_repository.dart';
 import '../../theme/poc_theme.dart';
+import '../../widgets/accessible_progress_indicator.dart';
 import '../../widgets/apple_layout_boundary.dart';
 import 'venue_map_data.dart';
 
@@ -33,6 +34,43 @@ AssetImage _mapAssetFor(BuildContext context) =>
 
 /// Scale used by the "Detail" preset and the deep-link focus animation.
 const double _kDetailScale = 2.0;
+
+/// Map directions describe the drawing, which is not a surveyed road map.
+String _mapRegion(Offset point) {
+  final horizontal = point.dx < 1 / 3
+      ? 'left'
+      : point.dx > 2 / 3
+      ? 'right'
+      : 'center';
+  final vertical = point.dy < 1 / 3
+      ? 'upper'
+      : point.dy > 2 / 3
+      ? 'lower'
+      : 'middle';
+  return vertical == 'middle' && horizontal == 'center'
+      ? 'center of the map'
+      : '$vertical $horizontal of the map';
+}
+
+String _mapPositionDescription(Offset point, List<VenueLocation> locations) {
+  VenueLocation? nearest;
+  var distance = double.infinity;
+  for (final location in locations) {
+    final center = Offset(
+      location.rect.x + location.rect.w / 2,
+      location.rect.y + location.rect.h / 2,
+    );
+    final candidate = (center - point).distanceSquared;
+    if (candidate < distance) {
+      nearest = location;
+      distance = candidate;
+    }
+  }
+  final landmark = nearest == null
+      ? ''
+      : ' Nearest mapped place: ${nearest.displayName}.';
+  return 'Approximate position: ${_mapRegion(point)}.$landmark';
+}
 
 /// Store captures use release UI while running in Flutter's debug test runner.
 /// Normal debug builds retain the hotspot editor and calibration controls.
@@ -57,7 +95,9 @@ class VenueMapPage extends ConsumerWidget {
         skipLoadingOnReload: true,
         loading: () => Scaffold(
           appBar: AppBar(title: const Text('Venue Map')),
-          body: const Center(child: CircularProgressIndicator()),
+          body: const Center(
+            child: AccessibleProgressIndicator(label: 'Loading venue map'),
+          ),
         ),
         error: (e, st) => Scaffold(
           appBar: AppBar(title: const Text('Venue Map')),
@@ -294,6 +334,18 @@ class _MapBodyState extends ConsumerState<_MapBody>
       _overview = false;
     });
     _animateToLocation(loc);
+  }
+
+  Future<void> _openPlaces() async {
+    final location = await Navigator.of(context).push<VenueLocation>(
+      MaterialPageRoute(
+        builder: (_) => _PlacesPage(
+          locations: widget.locations,
+          locationEnabled: _locationOn,
+        ),
+      ),
+    );
+    if (mounted && location != null) _selectVenue(location);
   }
 
   /// Computes the now/next status line for a venue from the live schedule.
@@ -626,7 +678,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
     if (_imageSize == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Venue Map')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(
+          child: AccessibleProgressIndicator(label: 'Loading venue map'),
+        ),
       );
     }
     final imageRatio = _imageSize!.width / _imageSize!.height;
@@ -732,38 +786,48 @@ class _MapBodyState extends ConsumerState<_MapBody>
                 ),
               ]
             : (_calibrating
-                ? [
-                    IconButton(
-                      icon: const Icon(Icons.undo),
-                      tooltip: 'Undo last point',
-                      onPressed: calibrationCount == 0 ? null : _undoCalibration,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy),
-                      tooltip: 'Copy _ControlPoint snippet',
-                      onPressed: calibrationCount == 0 ? null : _copyCalibrationDart,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: 'Clear all points',
-                      onPressed: calibrationCount == 0 ? null : _clearCalibration,
-                    ),
-                  ]
-                : ((debugTools || AppConfig.calibrationEnabled)
-                    ? [
-                        if (debugTools)
-                          IconButton(
-                            icon: const Icon(Icons.edit_location_alt_outlined),
-                            tooltip: 'Edit hotspots',
-                            onPressed: _enterEdit,
-                          ),
+                  ? [
+                      IconButton(
+                        icon: const Icon(Icons.undo),
+                        tooltip: 'Undo last point',
+                        onPressed: calibrationCount == 0
+                            ? null
+                            : _undoCalibration,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: 'Copy _ControlPoint snippet',
+                        onPressed: calibrationCount == 0
+                            ? null
+                            : _copyCalibrationDart,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Clear all points',
+                        onPressed: calibrationCount == 0
+                            ? null
+                            : _clearCalibration,
+                      ),
+                    ]
+                  : [
+                      IconButton(
+                        onPressed: _openPlaces,
+                        icon: const Icon(Icons.list_alt),
+                        tooltip: 'Places',
+                      ),
+                      if (debugTools)
+                        IconButton(
+                          icon: const Icon(Icons.edit_location_alt_outlined),
+                          tooltip: 'Edit hotspots',
+                          onPressed: _enterEdit,
+                        ),
+                      if (debugTools || AppConfig.calibrationEnabled)
                         IconButton(
                           icon: const Icon(Icons.my_location),
                           tooltip: 'Calibrate GPS ↔ map',
                           onPressed: _enterCalibrate,
                         ),
-                      ]
-                    : null)),
+                    ]),
       ),
       body: SafeArea(
         top: false,
@@ -1041,7 +1105,14 @@ class _MapBodyState extends ConsumerState<_MapBody>
                 top: _boardDy,
                 width: _boardW,
                 height: _boardH,
-                child: Image(image: _mapAssetFor(context), fit: BoxFit.fill),
+                child: Image(
+                  image: _mapAssetFor(context),
+                  fit: BoxFit.fill,
+                  semanticLabel:
+                      'Venue diagram with roads, walking paths, parking and '
+                      'Lay Lake across the top. Places lists venues and '
+                      'approximate map positions.',
+                ),
               ),
             ]),
           ),
@@ -1190,6 +1261,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
         left: p.center.dx - _PinIcon.hit / 2,
         top: p.center.dy - _PinIcon.hit / 2,
         child: _PinIcon(
+          key: ValueKey('venue-pin-${p.location.key}'),
           label: p.location.displayName,
           color: p.color,
           icon: p.meta.icon,
@@ -1241,7 +1313,13 @@ class _MapBodyState extends ConsumerState<_MapBody>
           top: c.dy - 20,
           width: 40,
           height: 40,
-          child: const IgnorePointer(child: _LocationDot()),
+          child: IgnorePointer(
+            child: Semantics(
+              label:
+                  'Your location. ${_mapPositionDescription(dotNorm, widget.locations)}',
+              child: const _LocationDot(),
+            ),
+          ),
         );
       }
     }
@@ -1261,13 +1339,21 @@ class _MapBodyState extends ConsumerState<_MapBody>
           c.dy > ch + margin) {
         continue;
       }
-      children.add(Positioned(
-        left: c.dx - 14,
-        top: c.dy - 14,
-        width: 28,
-        height: 28,
-        child: _CartMarker(cart: cart),
-      ));
+      children.add(
+        Positioned(
+          left: c.dx - 22,
+          top: c.dy - 22,
+          width: 44,
+          height: 44,
+          child: _CartMarker(
+            cart: cart,
+            positionDescription: _mapPositionDescription(
+              norm,
+              widget.locations,
+            ),
+          ),
+        ),
+      );
 
       final driver = cart.driverName?.trim();
       final labelText =
@@ -1279,11 +1365,15 @@ class _MapBodyState extends ConsumerState<_MapBody>
       const gap = 5.0;
       final labelLeftSide = norm.dx > 0.62;
       final left = labelLeftSide ? c.dx - rad - gap - chipW : c.dx + rad + gap;
-      children.add(Positioned(
-        left: left,
-        top: c.dy - chipH / 2,
-        child: IgnorePointer(child: _CartLabel(text: labelText)),
-      ));
+      children.add(
+        Positioned(
+          left: left,
+          top: c.dy - chipH / 2,
+          child: IgnorePointer(
+            child: ExcludeSemantics(child: _CartLabel(text: labelText)),
+          ),
+        ),
+      );
     }
 
     if (selLabel != null) children.add(selLabel);
@@ -1383,6 +1473,119 @@ class _VenueStatus {
   const _VenueStatus.next(this.time, this.title) : isNow = false;
 }
 
+/// A text alternative to spatial exploration, with ordinary focusable rows.
+/// Live positions remain subscribed while this page is open, and location is
+/// only read after the user has enabled it on the map.
+class _PlacesPage extends ConsumerWidget {
+  final List<VenueLocation> locations;
+  final bool locationEnabled;
+
+  const _PlacesPage({required this.locations, required this.locationEnabled});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final places = [
+      ...(ref.watch(venueLocationsProvider).valueOrNull ?? locations),
+    ]..sort((a, b) => a.displayName.compareTo(b.displayName));
+    final position = locationEnabled
+        ? ref.watch(currentPositionProvider).valueOrNull
+        : null;
+    final projected = position == null
+        ? null
+        : MapGeoReference.instance.project(
+            position.latitude,
+            position.longitude,
+          );
+    final carts = ref.watch(cartPositionsProvider).valueOrNull ?? const {};
+    final visibleCarts = <(CartPosition, Offset)>[];
+    for (final cart in carts.values) {
+      final point = MapGeoReference.instance.project(cart.lat, cart.lng);
+      if (point != null) visibleCarts.add((cart, point));
+    }
+    visibleCarts.sort(
+      (a, b) =>
+          (a.$1.displayName ?? 'Cart').compareTo(b.$1.displayName ?? 'Cart'),
+    );
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget heading(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Semantics(
+        header: true,
+        child: Text(text, style: Theme.of(context).textTheme.titleLarge),
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Places')),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Text(
+                'Choose a place to view it on the map. Positions describe '
+                'the venue drawing and are approximate. Lay Lake is across '
+                'the top, main parking is on the left, and overflow parking '
+                'is in the middle right.',
+              ),
+            ),
+            heading('Your location'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                !locationEnabled
+                    ? 'Location is off. Use Show my location on the map to '
+                          'enable it.'
+                    : position == null
+                    ? 'Waiting for your location. Check that location '
+                          'services are enabled.'
+                    : projected == null
+                    ? 'Your location is outside the venue map.'
+                    : _mapPositionDescription(projected, places),
+              ),
+            ),
+            heading('Golf carts'),
+            if (visibleCarts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('No golf carts are currently shown on the map.'),
+              ),
+            for (final (cart, point) in visibleCarts)
+              ListTile(
+                leading: Icon(Icons.electric_rickshaw, color: scheme.onSurface),
+                title: Text(cart.displayName ?? 'Cart'),
+                subtitle: Text(
+                  '${cart.driverName?.trim().isNotEmpty == true ? 'Driver: ${cart.driverName}. ' : ''}'
+                  '${_mapPositionDescription(point, places)}',
+                ),
+              ),
+            heading('All places'),
+            for (final place in places)
+              ListTile(
+                key: ValueKey('place-${place.key}'),
+                leading: Icon(
+                  venueMetaFor(place.key).icon,
+                  color: scheme.onSurface,
+                ),
+                title: Text(place.displayName),
+                subtitle: Text(
+                  '${categoryMetaFor(venueMetaFor(place.key).category).label}. '
+                  '${venueMetaFor(place.key).blurb}. '
+                  'Approximate position: ${_mapRegion(Offset(place.rect.x + place.rect.w / 2, place.rect.y + place.rect.h / 2))}.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).pop(place),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Resolved on-screen placement for one venue pin in the overlay.
 class _PinPlacement {
   final VenueLocation location;
@@ -1414,6 +1617,7 @@ class _PinIcon extends StatelessWidget {
   final VoidCallback onTap;
 
   const _PinIcon({
+    super.key,
     required this.color,
     required this.label,
     required this.icon,
@@ -1427,33 +1631,47 @@ class _PinIcon extends StatelessWidget {
     final iconSize = selected ? 19.0 : 16.0;
     final borderWidth = selected ? 3.0 : 2.0;
 
-    return Semantics(
-      label: label,
-      button: true,
-      selected: selected,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: SizedBox(
-          width: hit,
-          height: hit,
-          child: Center(
-            child: Container(
-              width: circle,
-              height: circle,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color,
-                border: Border.all(color: Colors.white, width: borderWidth),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x593A2818), // rgba(58,40,24,0.35)
-                    blurRadius: selected ? 8 : 3,
-                    offset: Offset(0, selected ? 3 : 1),
-                  ),
-                ],
+    return TextButton(
+      onPressed: onTap,
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+        minimumSize: const WidgetStatePropertyAll(Size(hit, hit)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const WidgetStatePropertyAll(CircleBorder()),
+        side: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.focused)
+              ? BorderSide(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  width: 2,
+                )
+              : BorderSide.none;
+        }),
+      ),
+      child: Semantics(
+        label: label,
+        selected: selected,
+        child: ExcludeSemantics(
+          child: SizedBox(
+            width: hit,
+            height: hit,
+            child: Center(
+              child: Container(
+                width: circle,
+                height: circle,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                  border: Border.all(color: Colors.white, width: borderWidth),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x593A2818), // rgba(58,40,24,0.35)
+                      blurRadius: selected ? 8 : 3,
+                      offset: Offset(0, selected ? 3 : 1),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, size: iconSize, color: Colors.white),
               ),
-              child: Icon(icon, size: iconSize, color: Colors.white),
             ),
           ),
         ),
@@ -1483,10 +1701,11 @@ class _PinLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: selected ? color : pal.labelChipBackground,
+        color: pal.sheetSurface,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: selected ? Colors.white : pal.labelChipBorder,
+          color: selected ? color : pal.labelChipBorder,
+          width: selected ? 2 : 1,
         ),
         boxShadow: const [
           BoxShadow(color: Color(0x1F3A2818), blurRadius: 2),
@@ -1497,9 +1716,7 @@ class _PinLabel extends StatelessWidget {
         maxLines: 1,
         softWrap: false,
         overflow: TextOverflow.clip,
-        style: _kLabelTextStyle.copyWith(
-          color: selected ? Colors.white : pal.labelChipText,
-        ),
+        style: _kLabelTextStyle.copyWith(color: pal.labelChipText),
       ),
     );
   }
@@ -1540,40 +1757,43 @@ class _MapControls extends StatelessWidget {
             excludeFromSemantics: true,
             child: Semantics(
               button: true,
+              enabled: true,
               label: zoomLabel,
-              onTap: onToggleOverview,
-              excludeSemantics: true,
               child: InkWell(
                 borderRadius: BorderRadius.circular(999),
                 onTap: onToggleOverview,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 13),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          overview ? Icons.zoom_in : Icons.zoom_out_map,
-                          size: compact ? 22 : 16,
-                          color: pal.controlIcon,
-                        ),
-                        if (!compact) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            zoomLabel,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: onSurface,
-                            ),
+                child: ExcludeSemantics(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 0 : 13,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            overview ? Icons.zoom_in : Icons.zoom_out_map,
+                            size: compact ? 22 : 16,
+                            color: pal.controlIcon,
                           ),
+                          if (!compact) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              zoomLabel,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: onSurface,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -1592,19 +1812,20 @@ class _MapControls extends StatelessWidget {
             excludeFromSemantics: true,
             child: Semantics(
               button: true,
+              enabled: true,
               label: locationOn ? 'Center on my location' : 'Show my location',
-              onTap: onLocate,
-              excludeSemantics: true,
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: onLocate,
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Icon(
-                    locationOn ? Icons.my_location : Icons.location_searching,
-                    color: pal.fabForeground,
-                    size: 22,
+                child: ExcludeSemantics(
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Icon(
+                      locationOn ? Icons.my_location : Icons.location_searching,
+                      color: pal.fabForeground,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
@@ -2135,7 +2356,8 @@ class _CartLabel extends StatelessWidget {
 /// `triggerMode: tap` because the Material default is long-press on mobile).
 class _CartMarker extends StatelessWidget {
   final CartPosition cart;
-  const _CartMarker({required this.cart});
+  final String positionDescription;
+  const _CartMarker({required this.cart, required this.positionDescription});
 
   @override
   Widget build(BuildContext context) {
@@ -2143,27 +2365,36 @@ class _CartMarker extends StatelessWidget {
     final tip = cart.driverName == null || cart.driverName!.isEmpty
         ? label
         : '$label — ${cart.driverName}';
-    return Tooltip(
-      message: tip,
-      triggerMode: TooltipTriggerMode.tap,
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFFFFC107),
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x66000000),
-              blurRadius: 4,
-              offset: Offset(0, 1),
+    return Semantics(
+      label: '$tip. $positionDescription',
+      excludeSemantics: true,
+      child: Tooltip(
+        message: tip,
+        excludeFromSemantics: true,
+        triggerMode: TooltipTriggerMode.tap,
+        child: Center(
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFFFC107),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.electric_rickshaw,
-            size: 16,
-            color: Color(0xFF2E4E2E),
+            child: const Center(
+              child: Icon(
+                Icons.electric_rickshaw,
+                size: 16,
+                color: Color(0xFF2E4E2E),
+              ),
+            ),
           ),
         ),
       ),

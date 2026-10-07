@@ -8,17 +8,10 @@ class AttributePill extends StatelessWidget {
   final EventAttribute attribute;
   final bool dense;
 
-  const AttributePill({
-    super.key,
-    required this.attribute,
-    this.dense = true,
-  });
+  const AttributePill({super.key, required this.attribute, this.dense = true});
 
   factory AttributePill.fromCode(String code, {bool dense = true}) {
-    return AttributePill(
-      attribute: EventAttribute.resolve(code),
-      dense: dense,
-    );
+    return AttributePill(attribute: EventAttribute.resolve(code), dense: dense);
   }
 
   @override
@@ -28,21 +21,24 @@ class AttributePill extends StatelessWidget {
     final padV = dense ? 2.0 : 4.0;
     final fontSize = dense ? 11.0 : 12.0;
     final text = dense ? attribute.code : attribute.label;
-    final display =
-        attribute.emoji.isEmpty ? text : '${attribute.emoji} $text';
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-      decoration: BoxDecoration(
-        color: pal.pillBackground,
-        border: Border.all(color: pal.pillBorder, width: 0.7),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        display,
-        style: TextStyle(
-          fontSize: fontSize,
-          color: pal.pillText,
-          fontWeight: FontWeight.w600,
+    final display = attribute.emoji.isEmpty ? text : '${attribute.emoji} $text';
+    return Semantics(
+      label: attribute.label,
+      excludeSemantics: true,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+        decoration: BoxDecoration(
+          color: pal.pillBackground,
+          border: Border.all(color: pal.pillBorder, width: 0.7),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          display,
+          style: TextStyle(
+            fontSize: fontSize,
+            color: pal.pillText,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

@@ -13,6 +13,7 @@ final class PlayOnConViewController: FlutterViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    view.backgroundColor = .systemBackground
     let bridge = AppleLayoutBridge(viewController: self)
     let channel = FlutterEventChannel(
       name: "playoncon/apple_layout", binaryMessenger: binaryMessenger)

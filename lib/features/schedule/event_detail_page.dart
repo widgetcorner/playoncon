@@ -24,10 +24,12 @@ class EventDetailPage extends ConsumerWidget {
         title: Text(event.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
-            icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
+            isSelected: isSaved,
+            icon: const Icon(Icons.bookmark_border),
+            selectedIcon: const Icon(Icons.bookmark),
             tooltip: isSaved
-                ? 'Remove from My Schedule'
-                : 'Save to My Schedule',
+                ? 'Remove from My Schedule: ${event.title}'
+                : 'Save to My Schedule: ${event.title}',
             onPressed: () => toggleSaved(context, ref, event),
           ),
         ],
@@ -40,9 +42,12 @@ class EventDetailPage extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  event.title,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Semantics(
+                  header: true,
+                  child: Text(
+                    event.title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -54,6 +59,7 @@ class EventDetailPage extends ConsumerWidget {
                   _DetailRow(
                     icon: Icons.place,
                     label: event.locationDisplayName!,
+                    semanticLabel: 'Location: ${event.locationDisplayName!}',
                   ),
                 if (event.locationKey != null) ...[
                   const SizedBox(height: 8),
@@ -70,11 +76,16 @@ class EventDetailPage extends ConsumerWidget {
                   ),
                 ],
                 if (event.track != null)
-                  _DetailRow(icon: Icons.label_outline, label: event.track!),
+                  _DetailRow(
+                    icon: Icons.label_outline,
+                    label: event.track!,
+                    semanticLabel: 'Track: ${event.track!}',
+                  ),
                 if (event.presenter != null)
                   _DetailRow(
                     icon: Icons.person_outline,
                     label: event.presenter!,
+                    semanticLabel: 'Presenter: ${event.presenter!}',
                   ),
                 if (event.attributes.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -82,9 +93,12 @@ class EventDetailPage extends ConsumerWidget {
                 ],
                 if (event.subSchedule.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text(
-                    'Schedule',
-                    style: Theme.of(context).textTheme.titleSmall,
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Schedule',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   for (final item in event.subSchedule)
@@ -111,18 +125,27 @@ class EventDetailPage extends ConsumerWidget {
 class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _DetailRow({required this.icon, required this.label});
+  final String semanticLabel;
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.semanticLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Theme.of(context).colorScheme.outline),
-          const SizedBox(width: 8),
-          Expanded(child: Text(label)),
-        ],
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: Theme.of(context).colorScheme.outline),
+            const SizedBox(width: 8),
+            Expanded(child: Text(label)),
+          ],
+        ),
       ),
     );
   }

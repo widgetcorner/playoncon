@@ -8,6 +8,7 @@ import '../../services/app_clock.dart';
 import '../../services/network_monitor.dart';
 import '../../services/saved_events_store.dart';
 import '../../services/schedule_repository.dart';
+import '../../widgets/accessible_progress_indicator.dart';
 import '../info/info_page.dart' show BetaPill;
 import 'attribute_pill.dart';
 import 'event_detail_page.dart';
@@ -21,26 +22,36 @@ class SchedulePage extends ConsumerWidget {
     final state = ref.watch(scheduleRepositoryProvider);
     final connectivity = ref.watch(connectivityProvider).value;
     final isOffline = connectivity?.isOnline == false;
+    final tabLabelSize = MediaQuery.textScalerOf(context).scale(14);
+    final scrollableTabs = tabLabelSize > 20;
+    final tabHeight = scrollableTabs ? tabLabelSize * 1.5 + 20 : 46.0;
 
     final allEvents = [...state.events]
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
     return DefaultTabController(
       length: 2,
+      animationDuration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : kTabScrollDuration,
       child: Scaffold(
         appBar: AppBar(
-          title: const Row(
+          title: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
+              const Flexible(
                 child: Text(
                   'Schedule',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              SizedBox(width: 10),
-              BetaPill(),
+              const SizedBox(width: 10),
+              BetaPill(
+                foregroundColor:
+                    Theme.of(context).appBarTheme.foregroundColor ??
+                    Theme.of(context).colorScheme.onPrimary,
+              ),
             ],
           ),
           actions: [
@@ -50,7 +61,10 @@ class SchedulePage extends ConsumerWidget {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AccessibleProgressIndicator(
+                        label: 'Refreshing schedule',
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Icon(Icons.refresh),
               onPressed: state.isSyncing
@@ -59,10 +73,14 @@ class SchedulePage extends ConsumerWidget {
                         ref.read(scheduleRepositoryProvider.notifier).refresh(),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
+            isScrollable: scrollableTabs,
+            tabAlignment: scrollableTabs
+                ? TabAlignment.start
+                : TabAlignment.fill,
             tabs: [
-              Tab(text: 'All Sessions'),
-              Tab(text: 'My Schedule'),
+              Tab(text: 'All Sessions', height: tabHeight),
+              Tab(text: 'My Schedule', height: tabHeight),
             ],
           ),
         ),
@@ -245,11 +263,14 @@ class _DayHeader extends StatelessWidget {
       width: double.infinity,
       color: scheme.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        DateFormat('EEEE, MMMM d').format(date),
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: scheme.onSurfaceVariant,
-          fontWeight: FontWeight.w700,
+      child: Semantics(
+        header: true,
+        child: Text(
+          DateFormat('EEEE, MMMM d').format(date),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -288,9 +309,13 @@ class _EventTile extends ConsumerWidget {
         ],
       ),
       trailing: IconButton(
-        icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
+        isSelected: isSaved,
+        icon: const Icon(Icons.bookmark_border),
+        selectedIcon: const Icon(Icons.bookmark),
         color: isSaved ? Theme.of(context).colorScheme.primary : null,
-        tooltip: isSaved ? 'Remove from My Schedule' : 'Save to My Schedule',
+        tooltip: isSaved
+            ? 'Remove from My Schedule: ${event.title}'
+            : 'Save to My Schedule: ${event.title}',
         onPressed: () => toggleSaved(context, ref, event),
       ),
       onTap: () => Navigator.of(
@@ -324,13 +349,18 @@ class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner(this.message);
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.errorContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        'Sync error: $message',
-        style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        color: Theme.of(context).colorScheme.errorContainer,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(
+          'Sync error: $message',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
+        ),
       ),
     );
   }

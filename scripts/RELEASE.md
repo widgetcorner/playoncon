@@ -113,8 +113,8 @@ paths, SHA256, size, and mtime. Android also checks bundle signing integrity.
 An xcarchive with no fresh IPA is a failure even if Flutter's archive command
 exited successfully. Old or multiple fresh IPAs are rejected.
 
-Keep canonical notes and per-store results alongside these receipts. Save the
-built source revision and intended diff before build (including shipped untracked
+Keep per-platform canonical notes and per-store results alongside these receipts.
+Save the built source revision and intended diff before build (including shipped untracked
 files); leave credentials out. Record version, source, artifacts, upload
 acknowledgements, processing, notes, screenshots, commit, and push independently.
 For resumption, establish source/artifact identity before reusing output; the
@@ -162,18 +162,27 @@ replacement-release decision, rather than exporting a different app under the ol
 
 Set `POC_VERSION` from the established release, never bump it as part of metadata
 recovery. Write user-facing notes from all changes since the last shipped source
-to `build/releases/<version>/notes.txt`. Keep 1–500 characters including newlines.
-Stage the same normalized UTF-8 text for both stores:
+as `build/releases/<version>/notes-ios.txt` and `notes-android.txt`. Each store's
+notes must describe changes experienced on its platform: Android notes must not
+mention Apple-only work such as iPhone Duo layouts or iOS launch behavior, and
+iOS notes must omit Android-only work. Shared app improvements may appear in
+both. Keep each file to 1–500 UTF-8 characters including newlines.
+Stage the two platform texts independently:
 
 ```bash
 POC_RECORD="build/releases/${POC_VERSION}"
 python3 scripts/store_metadata.py prepare \
-  --version "$POC_VERSION" --notes "$POC_RECORD/notes.txt" \
+  --version "$POC_VERSION" \
+  --ios-notes "$POC_RECORD/notes-ios.txt" \
+  --android-notes "$POC_RECORD/notes-android.txt" \
   --output "$POC_RECORD/metadata"
 ```
 
-The output contains `testflight.txt` and only the version-specific
-`play/en-US/changelogs/<N>.txt`. The helper rejects an output directory containing
+The output contains iOS notes in `testflight.txt` and Android notes in only the
+version-specific `play/en-US/changelogs/<N>.txt`. The legacy `--notes <file>`
+option is retained for genuinely shared notes that apply to both platforms;
+do not use it to copy Apple-only changes into Android notes or vice versa.
+The helper rejects an output directory containing
 another version or unrelated files; use an isolated path, not downloaded listing
 metadata or `default.txt`. Reusing the same release's staging directory is idempotent.
 
@@ -223,17 +232,19 @@ python3 scripts/store_metadata.py testflight \
   --version "$POC_VERSION" --notes "$POC_RECORD/metadata/testflight.txt" \
   --wait-seconds 1200
 python3 scripts/store_metadata.py play \
-  --version "$POC_VERSION" --notes "$POC_RECORD/metadata/testflight.txt" --read-only
+  --version "$POC_VERSION" --notes "$POC_RECORD/notes-android.txt" --read-only
 ```
 
 TestFlight resolves the app from its bundle ID and matches marketing train and
 build number. It waits at 30-second intervals for a valid processed build, creates
-or patches `en-US` What to Test, and reads back exact text. Run in a command session
-and keep the user updated. If Apple is still processing, record notes pending and
+or patches `en-US` What to Test from staged iOS `testflight.txt`, and reads back
+exact text. Run in a command session and keep the user updated. If Apple is still
+processing, record notes pending and
 rerun later without another bump/build/binary upload. Other locales remain intact.
 [Apple localization reference](https://developer.apple.com/documentation/appstoreconnectapi/beta-build-localizations).
 
-Play `--read-only` verifies the exact version code on `internal`. If only its notes
+Play `--read-only` verifies the exact version code on `internal` and compares its
+notes with `notes-android.txt`, never the iOS `testflight.txt`. If only its notes
 need repair, rerun the same command without `--read-only`: it reads the existing
 release, changes only the chosen locale's text, preserves other locales/releases
 and all release fields, validates, commits, and reads back a fresh edit. No AAB is

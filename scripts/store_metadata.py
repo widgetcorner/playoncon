@@ -342,10 +342,23 @@ def publish_testflight(client, marketing, build, locale, notes, read_only=False,
     return {"marketingVersion": marketing, "build": build, "buildId": item["id"], "locale": locale, "notesVerified": True}
 
 
-def prepare(notes_path, version, output, locale="en-US"):
+def prepare(notes_path, version, output, locale="en-US", *, ios_notes_path=None, android_notes_path=None):
     marketing, build = split_version(version)
-    notes = canonical_notes(notes_path)
-    manifest = {"version": version, "locale": locale, "notes": notes}
+    manifest = {"version": version, "locale": locale}
+    if notes_path is not None:
+        if ios_notes_path is not None or android_notes_path is not None:
+            raise ValueError("--notes cannot be combined with --ios-notes or --android-notes.")
+        ios_notes = android_notes = canonical_notes(notes_path)
+        manifest["notes"] = ios_notes
+        counts = {"characters": len(ios_notes)}
+    else:
+        if ios_notes_path is None or android_notes_path is None:
+            raise ValueError("Provide either --notes or both --ios-notes and --android-notes.")
+        # Validate both platforms before changing any staging files.
+        ios_notes = canonical_notes(ios_notes_path)
+        android_notes = canonical_notes(android_notes_path)
+        manifest.update({"iosNotes": ios_notes, "androidNotes": android_notes})
+        counts = {"iosCharacters": len(ios_notes), "androidCharacters": len(android_notes)}
     allowed = {"manifest.json", "testflight.txt", f"play/{locale}/changelogs/{build}.txt"}
     if output.exists():
         existing = {str(path.relative_to(output)) for path in output.rglob("*") if path.is_file()}
@@ -361,11 +374,11 @@ def prepare(notes_path, version, output, locale="en-US"):
     output.mkdir(parents=True, exist_ok=True)
     # Write the manifest first so an interrupted staging operation can be retried.
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (output / "testflight.txt").write_text(notes, encoding="utf-8")
+    (output / "testflight.txt").write_text(ios_notes, encoding="utf-8")
     changelog = output / "play" / locale / "changelogs" / f"{build}.txt"
     changelog.parent.mkdir(parents=True, exist_ok=True)
-    changelog.write_text(notes, encoding="utf-8")
-    return {"version": version, "characters": len(notes), "testflightNotes": str((output / "testflight.txt").resolve()), "playMetadata": str((output / "play").resolve())}
+    changelog.write_text(android_notes, encoding="utf-8")
+    return {"version": version, **counts, "testflightNotes": str((output / "testflight.txt").resolve()), "playMetadata": str((output / "play").resolve())}
 
 
 def main():
@@ -374,9 +387,11 @@ def main():
     for name in ("prepare", "testflight", "play"):
         command = subparsers.add_parser(name)
         command.add_argument("--version", required=True)
-        command.add_argument("--notes", type=Path, required=True)
+        command.add_argument("--notes", type=Path, required=name != "prepare", help="UTF-8 notes file; prepare uses it for both platforms.")
         command.add_argument("--locale", default="en-US")
         if name == "prepare":
+            command.add_argument("--ios-notes", type=Path, help="UTF-8 TestFlight notes file; requires --android-notes instead of --notes.")
+            command.add_argument("--android-notes", type=Path, help="UTF-8 Google Play notes file; requires --ios-notes instead of --notes.")
             command.add_argument("--output", type=Path, required=True)
         else:
             command.add_argument("--read-only", action="store_true", help="Verify existing notes without changing store metadata.")
@@ -388,7 +403,7 @@ def main():
         if not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", args.locale):
             raise ValueError("Invalid store locale.")
         if args.command == "prepare":
-            result = prepare(args.notes, args.version, args.output, args.locale)
+            result = prepare(args.notes, args.version, args.output, args.locale, ios_notes_path=args.ios_notes, android_notes_path=args.android_notes)
         else:
             notes = canonical_notes(args.notes)
             load_release_environment()

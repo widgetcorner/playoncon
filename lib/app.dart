@@ -7,7 +7,9 @@ import 'features/map/venue_map_page.dart';
 import 'features/schedule/schedule_page.dart';
 import 'services/apple_layout.dart';
 import 'theme/poc_theme.dart';
+import 'theme/reduced_motion_transitions.dart';
 import 'widgets/adaptive_navigation.dart';
+import 'widgets/accessibility_preferences.dart';
 import 'widgets/apple_layout_boundary.dart';
 
 class PlayOnConApp extends ConsumerWidget {
@@ -24,9 +26,23 @@ class PlayOnConApp extends ConsumerWidget {
       theme: PocTheme.light(),
       darkTheme: PocTheme.dark(),
       themeMode: ThemeMode.system,
-      builder: (context, child) => ColoredBox(
-        color: Theme.of(context).colorScheme.surface,
-        child: AppleLayoutBoundary(layout: layout, child: child!),
+      builder: (context, child) => AccessibilityPreferences(
+        child: Builder(
+          builder: (context) {
+            final theme = Theme.of(context);
+            return Theme(
+              data: MediaQuery.disableAnimationsOf(context)
+                  ? theme.copyWith(
+                      pageTransitionsTheme: reducedMotionTransitions,
+                    )
+                  : theme,
+              child: ColoredBox(
+                color: theme.colorScheme.surface,
+                child: AppleLayoutBoundary(layout: layout, child: child!),
+              ),
+            );
+          },
+        ),
       ),
       home: const RootShell(),
     );
