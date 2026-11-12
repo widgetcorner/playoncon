@@ -1,26 +1,22 @@
 [
   {
-    "id": "363185771_1783022400000_859746281",
+    "id": "b09eae4b_20260702T1600_3abd8322",
     "title": "Welcome Wagon",
     "startTime": "2026-07-02T16:00:00.000",
     "endTime": "2026-07-02T17:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "227640236_1783026000000_882378525",
+    "id": "39f2f78e_20260702T1700_1777cb38",
     "title": "Make a Holiday Card",
     "startTime": "2026-07-02T17:00:00.000",
     "endTime": "2026-07-02T18:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "AT"
@@ -28,79 +24,67 @@
     "subSchedule": []
   },
   {
-    "id": "578833199_1783026000000_590535442",
+    "id": "26d496ba_20260702T1700_f8bd10a3",
     "title": "Kickoff Pool Party",
     "startTime": "2026-07-02T17:00:00.000",
     "endTime": "2026-07-02T18:00:00.000",
     "locationKey": "pool",
     "locationDisplayName": "Pool",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "65884514_1783029600000_433551012",
+    "id": "c52caa6f_20260702T1800_7c9672f9",
     "title": "Ultimate Gamer Qualifiers (Runs till Saturday Start Time)",
     "startTime": "2026-07-02T18:00:00.000",
     "endTime": "2026-07-02T20:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "679169885_1783029600000_526582537",
+    "id": "981853a7_20260702T1800_03f227dd",
     "title": "Holiday Mixer - ALL AGES!!!",
     "startTime": "2026-07-02T18:00:00.000",
     "endTime": "2026-07-02T20:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "185235089_1783036800000_859746281",
+    "id": "33c2c79f_20260702T2000_3abd8322",
     "title": "Holiday TV Episodes",
     "startTime": "2026-07-02T20:00:00.000",
     "endTime": "2026-07-02T22:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "262832465_1783036800000_433551012",
+    "id": "6976975a_20260702T2000_7c9672f9",
     "title": "Nidhogg Tournament",
     "startTime": "2026-07-02T20:00:00.000",
     "endTime": "2026-07-02T22:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "333346069_1783036800000_982518793",
+    "id": "cdedb443_20260702T2000_c17bd710",
     "title": "Magical Athletes",
     "startTime": "2026-07-02T20:00:00.000",
     "endTime": "2026-07-02T22:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": [
@@ -115,14 +99,12 @@
     ]
   },
   {
-    "id": "1013670330_1783040400000_526582537",
+    "id": "05a1f313_20260702T2100_03f227dd",
     "title": "Holiday Party",
     "startTime": "2026-07-02T21:00:00.000",
     "endTime": "2026-07-03T00:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -130,27 +112,23 @@
     "subSchedule": []
   },
   {
-    "id": "134604812_1783044000000_859746281",
+    "id": "e2c5b901_20260702T2200_3abd8322",
     "title": "Aegyo Theater",
     "startTime": "2026-07-02T22:00:00.000",
     "endTime": "2026-07-03T00:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "530947669_1783051200000_590535442",
+    "id": "5204be45_20260703T0000_f8bd10a3",
     "title": "Adult Swim",
     "startTime": "2026-07-03T00:00:00.000",
     "endTime": "2026-07-03T02:00:00.000",
     "locationKey": "pool",
     "locationDisplayName": "Pool",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -158,14 +136,12 @@
     "subSchedule": []
   },
   {
-    "id": "551212887_1783051200000_526582537",
+    "id": "8759e487_20260703T0000_03f227dd",
     "title": "Dance...Heck",
     "startTime": "2026-07-03T00:00:00.000",
     "endTime": "2026-07-03T02:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -173,27 +149,23 @@
     "subSchedule": []
   },
   {
-    "id": "752161885_1783051200000_859746281",
+    "id": "50e33dfd_20260703T0000_3abd8322",
     "title": "Karaoke",
     "startTime": "2026-07-03T00:00:00.000",
     "endTime": "2026-07-03T02:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "388856022_1783087200000_526582537",
+    "id": "4801a516_20260703T1000_03f227dd",
     "title": "Coffee Service",
     "startTime": "2026-07-03T10:00:00.000",
     "endTime": "2026-07-03T11:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -201,27 +173,23 @@
     "subSchedule": []
   },
   {
-    "id": "573977202_1783087200000_343892948",
+    "id": "f5eae703_20260703T1000_58c11538",
     "title": "Nature Run / Walk",
     "startTime": "2026-07-03T10:00:00.000",
     "endTime": "2026-07-03T11:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Picnic Tables",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "591090482_1783087200000_859746281",
+    "id": "0918f296_20260703T1000_3abd8322",
     "title": "Morning Cartoons",
     "startTime": "2026-07-03T10:00:00.000",
     "endTime": "2026-07-03T11:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -229,66 +197,56 @@
     "subSchedule": []
   },
   {
-    "id": "71879916_1783087200000_433551012",
+    "id": "175a08d8_20260703T1000_7c9672f9",
     "title": "Holiday Just Dance",
     "startTime": "2026-07-03T10:00:00.000",
     "endTime": "2026-07-03T11:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "293732003_1783090800000_882378525",
+    "id": "650f4b20_20260703T1100_1777cb38",
     "title": "Perler Bead Crafts",
     "startTime": "2026-07-03T11:00:00.000",
     "endTime": "2026-07-03T12:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "455546509_1783090800000_859746281",
+    "id": "529355b2_20260703T1100_3abd8322",
     "title": "Buzzer Trivia",
     "startTime": "2026-07-03T11:00:00.000",
     "endTime": "2026-07-03T12:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "571445307_1783090800000_982518793",
+    "id": "56c9e94f_20260703T1100_c17bd710",
     "title": "Learn to Play: Riftbound",
     "startTime": "2026-07-03T11:00:00.000",
     "endTime": "2026-07-03T12:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "794613506_1783090800000_526582537",
+    "id": "e64d83ac_20260703T1100_03f227dd",
     "title": "Build Your Own Bloody Mary",
     "startTime": "2026-07-03T11:00:00.000",
     "endTime": "2026-07-03T12:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -296,53 +254,45 @@
     "subSchedule": []
   },
   {
-    "id": "896691377_1783090800000_433551012",
+    "id": "ab1329a3_20260703T1100_7c9672f9",
     "title": "Super Smash Brothers Ultimate Singles",
     "startTime": "2026-07-03T11:00:00.000",
     "endTime": "2026-07-03T14:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "110456808_1783094400000_982518793",
+    "id": "115368f8_20260703T1200_c17bd710",
     "title": "Magic The Gathering : Jumpstart",
     "startTime": "2026-07-03T12:00:00.000",
     "endTime": "2026-07-03T15:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "332919785_1783094400000_859746281",
+    "id": "6867ba62_20260703T1200_3abd8322",
     "title": "Karaoke Battles",
     "startTime": "2026-07-03T12:00:00.000",
     "endTime": "2026-07-03T13:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "410153045_1783094400000_882378525",
+    "id": "fe3c93b5_20260703T1200_1777cb38",
     "title": "How To: Tie-Dye",
     "startTime": "2026-07-03T12:00:00.000",
     "endTime": "2026-07-03T13:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "AT"
@@ -350,53 +300,45 @@
     "subSchedule": []
   },
   {
-    "id": "983470058_1783094400000_343892948",
+    "id": "b3e6fd17_20260703T1200_28f17097",
     "title": "Boat On!",
     "startTime": "2026-07-03T12:00:00.000",
     "endTime": "2026-07-03T14:00:00.000",
     "locationKey": "dock-canoes",
     "locationDisplayName": "Dock & Canoes",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "269563372_1783098000000_859746281",
+    "id": "8b2309c9_20260703T1300_3abd8322",
     "title": "Jackbox Party! (WIFI Permitting)",
     "startTime": "2026-07-03T13:00:00.000",
     "endTime": "2026-07-03T14:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "4108637_1783098000000_882378525",
+    "id": "4c7d3144_20260703T1300_1777cb38",
     "title": "Valentines Speed Meeting (Make new Friends)",
     "startTime": "2026-07-03T13:00:00.000",
     "endTime": "2026-07-03T14:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "49344691_1783098000000_526582537",
+    "id": "3059f8ac_20260703T1300_03f227dd",
     "title": "Egg Nog Class & Tasting",
     "startTime": "2026-07-03T13:00:00.000",
     "endTime": "2026-07-03T14:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -404,14 +346,12 @@
     "subSchedule": []
   },
   {
-    "id": "166259882_1783101600000_859746281",
+    "id": "264df9af_20260703T1400_3abd8322",
     "title": "Leveling Up: Kids, Games, and Growing Minds",
     "startTime": "2026-07-03T14:00:00.000",
     "endTime": "2026-07-03T15:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -419,14 +359,12 @@
     "subSchedule": []
   },
   {
-    "id": "521158796_1783101600000_526582537",
+    "id": "9a43d23f_20260703T1400_03f227dd",
     "title": "Cabaret 101",
     "startTime": "2026-07-03T14:00:00.000",
     "endTime": "2026-07-03T15:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -434,66 +372,56 @@
     "subSchedule": []
   },
   {
-    "id": "799226954_1783101600000_343892948",
+    "id": "a0543ec1_20260703T1400_54df2aad",
     "title": "Archery",
     "startTime": "2026-07-03T14:00:00.000",
     "endTime": "2026-07-03T18:00:00.000",
     "locationKey": "archery",
     "locationDisplayName": "Archery Field",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "825740487_1783101600000_590535442",
+    "id": "68d9519a_20260703T1400_f8bd10a3",
     "title": "Poolside Party Karaoke",
     "startTime": "2026-07-03T14:00:00.000",
     "endTime": "2026-07-03T16:00:00.000",
     "locationKey": "pool",
     "locationDisplayName": "Pool",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "890208359_1783101600000_433551012",
+    "id": "6e8cd988_20260703T1400_7c9672f9",
     "title": "Tetris",
     "startTime": "2026-07-03T14:00:00.000",
     "endTime": "2026-07-03T17:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "144982832_1783105200000_859746281",
+    "id": "b3758d46_20260703T1500_3abd8322",
     "title": "Star Wars Trivia (Holiday Special and more!)",
     "startTime": "2026-07-03T15:00:00.000",
     "endTime": "2026-07-03T16:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "301805501_1783105200000_343892948",
+    "id": "37ae176d_20260703T1500_547a4455",
     "title": "Cooler Yacht-Zee",
     "startTime": "2026-07-03T15:00:00.000",
     "endTime": "2026-07-03T16:00:00.000",
     "locationKey": "recreation-field",
     "locationDisplayName": "Rec Field",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -501,14 +429,12 @@
     "subSchedule": []
   },
   {
-    "id": "388534916_1783105200000_982518793",
+    "id": "41460259_20260703T1500_c17bd710",
     "title": "Looot!",
     "startTime": "2026-07-03T15:00:00.000",
     "endTime": "2026-07-03T17:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": [
@@ -523,27 +449,23 @@
     ]
   },
   {
-    "id": "609539421_1783105200000_882378525",
+    "id": "bfb23043_20260703T1500_1777cb38",
     "title": "Jam Session",
     "startTime": "2026-07-03T15:00:00.000",
     "endTime": "2026-07-03T17:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "698806821_1783105200000_526582537",
+    "id": "03d4f339_20260703T1500_03f227dd",
     "title": "Open Cantina",
     "startTime": "2026-07-03T15:00:00.000",
     "endTime": "2026-07-03T19:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -551,14 +473,12 @@
     "subSchedule": []
   },
   {
-    "id": "195464950_1783108800000_859746281",
+    "id": "6958b57c_20260703T1600_3abd8322",
     "title": "Malevolent Karaoke",
     "startTime": "2026-07-03T16:00:00.000",
     "endTime": "2026-07-03T18:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "PG13"
@@ -566,14 +486,12 @@
     "subSchedule": []
   },
   {
-    "id": "586354274_1783108800000_343892948",
+    "id": "cc8cfd42_20260703T1600_547a4455",
     "title": "Beer Croquet",
     "startTime": "2026-07-03T16:00:00.000",
     "endTime": "2026-07-03T18:00:00.000",
     "locationKey": "recreation-field",
     "locationDisplayName": "Rec Field",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -581,27 +499,23 @@
     "subSchedule": []
   },
   {
-    "id": "505102961_1783112400000_982518793",
+    "id": "fef738c7_20260703T1700_c17bd710",
     "title": "Ticket to Ride: First Journey (US) Learn to Play (Treehouse)",
     "startTime": "2026-07-03T17:00:00.000",
     "endTime": "2026-07-03T18:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "832899095_1783112400000_982518793",
+    "id": "acbbbca3_20260703T1700_c17bd710",
     "title": "Goblin Quest TTRPG",
     "startTime": "2026-07-03T17:00:00.000",
     "endTime": "2026-07-03T20:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "PG13"
@@ -609,40 +523,34 @@
     "subSchedule": []
   },
   {
-    "id": "568515132_1783116000000_982518793",
+    "id": "5f775f87_20260703T1800_c17bd710",
     "title": "Catan Junior Learn and Play (Treehouse)",
     "startTime": "2026-07-03T18:00:00.000",
     "endTime": "2026-07-03T19:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "815945815_1783116000000_343892948",
+    "id": "75deee25_20260703T1800_d6d8fb69",
     "title": "Presidential Nominations & Table Flipping",
     "startTime": "2026-07-03T18:00:00.000",
     "endTime": "2026-07-03T19:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "145693448_1783119600000_526582537",
+    "id": "e2d7f474_20260703T1900_03f227dd",
     "title": "Cantina Counter Service",
     "startTime": "2026-07-03T19:00:00.000",
     "endTime": "2026-07-03T21:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -650,27 +558,23 @@
     "subSchedule": []
   },
   {
-    "id": "331832031_1783119600000_343892948",
+    "id": "062bd554_20260703T1900_d6d8fb69",
     "title": "Sparkling Noise",
     "startTime": "2026-07-03T19:00:00.000",
     "endTime": "2026-07-03T20:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "732637586_1783119600000_882378525",
+    "id": "7c5ff05a_20260703T1900_fb8a8b29",
     "title": "Apprentice Party",
     "startTime": "2026-07-03T19:00:00.000",
     "endTime": "2026-07-03T22:00:00.000",
     "locationKey": "morrison-dorm",
     "locationDisplayName": "Lower Morrison Dorm",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "AT"
@@ -678,14 +582,12 @@
     "subSchedule": []
   },
   {
-    "id": "492617978_1783123200000_982518793",
+    "id": "8b7f590c_20260703T2000_c17bd710",
     "title": "Times Past TTRPG",
     "startTime": "2026-07-03T20:00:00.000",
     "endTime": "2026-07-03T23:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "PG13"
@@ -693,40 +595,34 @@
     "subSchedule": []
   },
   {
-    "id": "989259726_1783123200000_343892948",
+    "id": "a6d600a8_20260703T2000_d6d8fb69",
     "title": "Music: Professor Shyguy",
     "startTime": "2026-07-03T20:00:00.000",
     "endTime": "2026-07-03T21:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "39676251_1783126800000_433551012",
+    "id": "e9638e97_20260703T2100_7c9672f9",
     "title": "Electoral Carnage",
     "startTime": "2026-07-03T21:00:00.000",
     "endTime": "2026-07-03T23:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "515563017_1783126800000_526582537",
+    "id": "4d5d800a_20260703T2100_03f227dd",
     "title": "Old School Anime Party",
     "startTime": "2026-07-03T21:00:00.000",
     "endTime": "2026-07-04T01:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -734,14 +630,12 @@
     "subSchedule": []
   },
   {
-    "id": "578083806_1783130400000_343892948",
+    "id": "6996a3bc_20260703T2200_0120e766",
     "title": "Yule Fire",
     "startTime": "2026-07-03T22:00:00.000",
     "endTime": "2026-07-04T00:00:00.000",
     "locationKey": "lakeview-fire-pit",
     "locationDisplayName": "Lakeside Fire Pit",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -749,40 +643,34 @@
     "subSchedule": []
   },
   {
-    "id": "636429448_1783130400000_859746281",
+    "id": "898dd0f5_20260703T2200_3abd8322",
     "title": "Star Wars: Holiday Special",
     "startTime": "2026-07-03T22:00:00.000",
     "endTime": "2026-07-03T23:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "980804450_1783134000000_982518793",
+    "id": "8a0da7e6_20260703T2300_c17bd710",
     "title": "Blood on the Clocktower",
     "startTime": "2026-07-03T23:00:00.000",
     "endTime": "2026-07-04T01:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "73521533_1783135800000_859746281",
+    "id": "a228be30_20260703T2330_3abd8322",
     "title": "Rocky Horror Picture Show",
     "startTime": "2026-07-03T23:30:00.000",
     "endTime": "2026-07-04T01:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "PG13"
@@ -790,14 +678,12 @@
     "subSchedule": []
   },
   {
-    "id": "530947669_1783137600000_590535442",
+    "id": "5204be45_20260704T0000_f8bd10a3",
     "title": "Adult Swim",
     "startTime": "2026-07-04T00:00:00.000",
     "endTime": "2026-07-04T02:00:00.000",
     "locationKey": "pool",
     "locationDisplayName": "Pool",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -805,27 +691,23 @@
     "subSchedule": []
   },
   {
-    "id": "299355418_1783173600000_433551012",
+    "id": "7db6ecb6_20260704T1000_7c9672f9",
     "title": "Ultimate Gamer",
     "startTime": "2026-07-04T10:00:00.000",
     "endTime": "2026-07-04T14:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "371576460_1783173600000_433551012",
+    "id": "523a0a64_20260704T1000_7c9672f9",
     "title": "Just Dance",
     "startTime": "2026-07-04T10:00:00.000",
     "endTime": "2026-07-04T11:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "AT"
@@ -833,14 +715,12 @@
     "subSchedule": []
   },
   {
-    "id": "388856022_1783173600000_526582537",
+    "id": "4801a516_20260704T1000_03f227dd",
     "title": "Coffee Service",
     "startTime": "2026-07-04T10:00:00.000",
     "endTime": "2026-07-04T11:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -848,27 +728,23 @@
     "subSchedule": []
   },
   {
-    "id": "573977202_1783173600000_343892948",
+    "id": "f5eae703_20260704T1000_58c11538",
     "title": "Nature Run / Walk",
     "startTime": "2026-07-04T10:00:00.000",
     "endTime": "2026-07-04T11:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Picnic Tables",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "591090482_1783173600000_859746281",
+    "id": "0918f296_20260704T1000_3abd8322",
     "title": "Morning Cartoons",
     "startTime": "2026-07-04T10:00:00.000",
     "endTime": "2026-07-04T11:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -876,27 +752,23 @@
     "subSchedule": []
   },
   {
-    "id": "695925387_1783173600000_882378525",
+    "id": "a1eb28bd_20260704T1000_1777cb38",
     "title": "Crochet Craft Session",
     "startTime": "2026-07-04T10:00:00.000",
     "endTime": "2026-07-04T12:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "141827970_1783177200000_343892948",
+    "id": "0616ab67_20260704T1100_073d3229",
     "title": "Easter Egg Hunt",
     "startTime": "2026-07-04T11:00:00.000",
     "endTime": "2026-07-04T12:00:00.000",
     "locationKey": "mini-golf",
     "locationDisplayName": "Mini-golf",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "AT"
@@ -904,53 +776,45 @@
     "subSchedule": []
   },
   {
-    "id": "42755022_1783177200000_982518793",
+    "id": "679b3392_20260704T1100_c17bd710",
     "title": "Parsely Live Text Adventure",
     "startTime": "2026-07-04T11:00:00.000",
     "endTime": "2026-07-04T13:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "455546509_1783177200000_859746281",
+    "id": "529355b2_20260704T1100_3abd8322",
     "title": "Buzzer Trivia",
     "startTime": "2026-07-04T11:00:00.000",
     "endTime": "2026-07-04T12:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "520170763_1783177200000_343892948",
+    "id": "b37838ba_20260704T1100_b37838ba",
     "title": "Climbing Wall",
     "startTime": "2026-07-04T11:00:00.000",
     "endTime": "2026-07-04T13:00:00.000",
     "locationKey": "climbing-wall",
     "locationDisplayName": "Climbing Wall",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "794613506_1783177200000_526582537",
+    "id": "e64d83ac_20260704T1100_03f227dd",
     "title": "Build Your Own Bloody Mary",
     "startTime": "2026-07-04T11:00:00.000",
     "endTime": "2026-07-04T12:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -958,79 +822,67 @@
     "subSchedule": []
   },
   {
-    "id": "1044718038_1783180800000_859746281",
+    "id": "6abcf7e2_20260704T1200_3abd8322",
     "title": "Ho-Ho-Hoax! (Holiday Movie Film or Fiction)",
     "startTime": "2026-07-04T12:00:00.000",
     "endTime": "2026-07-04T13:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "799226954_1783180800000_343892948",
+    "id": "a0543ec1_20260704T1200_54df2aad",
     "title": "Archery",
     "startTime": "2026-07-04T12:00:00.000",
     "endTime": "2026-07-04T15:00:00.000",
     "locationKey": "archery",
     "locationDisplayName": "Archery Field",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "86924605_1783180800000_882378525",
+    "id": "d41722c1_20260704T1200_1777cb38",
     "title": "Fantasy Map Making Workshop",
     "startTime": "2026-07-04T12:00:00.000",
     "endTime": "2026-07-04T13:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "983470058_1783180800000_343892948",
+    "id": "b3e6fd17_20260704T1200_28f17097",
     "title": "Boat On!",
     "startTime": "2026-07-04T12:00:00.000",
     "endTime": "2026-07-04T14:00:00.000",
     "locationKey": "dock-canoes",
     "locationDisplayName": "Dock & Canoes",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "290937776_1783184400000_433551012",
+    "id": "3edb63b7_20260704T1300_7c9672f9",
     "title": "Minecraft Build Competition",
     "startTime": "2026-07-04T13:00:00.000",
     "endTime": "2026-07-04T15:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "51772571_1783184400000_526582537",
+    "id": "f71ea13f_20260704T1300_03f227dd",
     "title": "White Elephant Cocktail",
     "startTime": "2026-07-04T13:00:00.000",
     "endTime": "2026-07-04T14:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -1038,27 +890,23 @@
     "subSchedule": []
   },
   {
-    "id": "560444744_1783184400000_982518793",
+    "id": "2771dd60_20260704T1300_c17bd710",
     "title": "Magic The Gathering : Secrets of Strixhaven",
     "startTime": "2026-07-04T13:00:00.000",
     "endTime": "2026-07-04T16:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "77999203_1783184400000_882378525",
+    "id": "d441f35a_20260704T1300_1777cb38",
     "title": "Pictures with Santa!",
     "startTime": "2026-07-04T13:00:00.000",
     "endTime": "2026-07-04T15:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": [
@@ -1069,14 +917,12 @@
     ]
   },
   {
-    "id": "974002021_1783184400000_859746281",
+    "id": "1d632b42_20260704T1300_3abd8322",
     "title": "Craft and Chill",
     "startTime": "2026-07-04T13:00:00.000",
     "endTime": "2026-07-04T14:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -1084,53 +930,45 @@
     "subSchedule": []
   },
   {
-    "id": "905360375_1783188000000_590535442",
+    "id": "17675266_20260704T1400_f8bd10a3",
     "title": "Poolside Karaoke",
     "startTime": "2026-07-04T14:00:00.000",
     "endTime": "2026-07-04T16:00:00.000",
     "locationKey": "pool",
     "locationDisplayName": "Pool",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "980827325_1783188000000_859746281",
+    "id": "32273e3d_20260704T1400_3abd8322",
     "title": "Ummm... Actually!",
     "startTime": "2026-07-04T14:00:00.000",
     "endTime": "2026-07-04T15:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "149324008_1783191600000_982518793",
+    "id": "e6d1142f_20260704T1500_c17bd710",
     "title": "My First Carcassonne Learn and Play (Treehouse)",
     "startTime": "2026-07-04T15:00:00.000",
     "endTime": "2026-07-04T16:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "698806821_1783191600000_526582537",
+    "id": "03d4f339_20260704T1500_03f227dd",
     "title": "Open Cantina",
     "startTime": "2026-07-04T15:00:00.000",
     "endTime": "2026-07-04T19:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -1138,27 +976,23 @@
     "subSchedule": []
   },
   {
-    "id": "89440516_1783191600000_343892948",
+    "id": "5d5510db_20260704T1500_d6d8fb69",
     "title": "Color Wars ALL AGES!",
     "startTime": "2026-07-04T15:00:00.000",
     "endTime": "2026-07-04T17:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "230689971_1783195200000_982518793",
+    "id": "859fc873_20260704T1600_c17bd710",
     "title": "Castle Combo",
     "startTime": "2026-07-04T16:00:00.000",
     "endTime": "2026-07-04T18:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": [
@@ -1173,27 +1007,23 @@
     ]
   },
   {
-    "id": "344193094_1783198800000_433551012",
+    "id": "d5b2efbc_20260704T1700_7c9672f9",
     "title": "Super Smash Brothers Ultimate Doubles",
     "startTime": "2026-07-04T17:00:00.000",
     "endTime": "2026-07-04T20:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "774559720_1783198800000_343892948",
+    "id": "674cd9b5_20260704T1700_98911b6c",
     "title": "Beer Croquet (Field)",
     "startTime": "2026-07-04T17:00:00.000",
     "endTime": "2026-07-04T19:00:00.000",
     "locationKey": null,
     "locationDisplayName": "Outdoors",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -1201,14 +1031,12 @@
     "subSchedule": []
   },
   {
-    "id": "862887527_1783198800000_526582537",
+    "id": "c8aa39a3_20260704T1700_03f227dd",
     "title": "Tis the Season to Make Punch!",
     "startTime": "2026-07-04T17:00:00.000",
     "endTime": "2026-07-04T17:30:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -1216,27 +1044,23 @@
     "subSchedule": []
   },
   {
-    "id": "99447580_1783198800000_882378525",
+    "id": "eb51a226_20260704T1700_1777cb38",
     "title": "Dinner Theater - Holiday Trivia",
     "startTime": "2026-07-04T17:00:00.000",
     "endTime": "2026-07-04T18:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "509500074_1783200600000_526582537",
+    "id": "b3572c75_20260704T1730_03f227dd",
     "title": "Adult Karaoke",
     "startTime": "2026-07-04T17:30:00.000",
     "endTime": "2026-07-04T19:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -1244,14 +1068,12 @@
     "subSchedule": []
   },
   {
-    "id": "328537058_1783202400000_982518793",
+    "id": "dfbb9fda_20260704T1800_c17bd710",
     "title": "Carnival Of Doom TTRPG",
     "startTime": "2026-07-04T18:00:00.000",
     "endTime": "2026-07-04T21:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "PG13"
@@ -1259,27 +1081,23 @@
     "subSchedule": []
   },
   {
-    "id": "184572897_1783206000000_859746281",
+    "id": "f899c8ab_20260704T1900_3abd8322",
     "title": "Costume Contest & Presidential Elections",
     "startTime": "2026-07-04T19:00:00.000",
     "endTime": "2026-07-04T20:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "145693448_1783209600000_526582537",
+    "id": "e2d7f474_20260704T2000_03f227dd",
     "title": "Cantina Counter Service",
     "startTime": "2026-07-04T20:00:00.000",
     "endTime": "2026-07-05T02:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -1287,27 +1105,23 @@
     "subSchedule": []
   },
   {
-    "id": "738519796_1783209600000_343892948",
+    "id": "40171b71_20260704T2000_d6d8fb69",
     "title": "8:30 PM POC: Holiday Variety Show ALL AGES!!",
     "startTime": "2026-07-04T20:00:00.000",
     "endTime": "2026-07-04T22:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "412176512_1783213200000_859746281",
+    "id": "4b05474f_20260704T2100_3abd8322",
     "title": "Apprentice Movie Night (8:30 PM - 12 AM)",
     "startTime": "2026-07-04T21:00:00.000",
     "endTime": "2026-07-05T00:00:00.000",
     "locationKey": "theater",
     "locationDisplayName": "Theater",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "AT"
@@ -1315,14 +1129,12 @@
     "subSchedule": []
   },
   {
-    "id": "832899095_1783213200000_982518793",
+    "id": "acbbbca3_20260704T2100_c17bd710",
     "title": "Goblin Quest TTRPG",
     "startTime": "2026-07-04T21:00:00.000",
     "endTime": "2026-07-05T00:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "PG13"
@@ -1330,40 +1142,34 @@
     "subSchedule": []
   },
   {
-    "id": "341352671_1783216800000_343892948",
+    "id": "29b5b824_20260704T2200_d6d8fb69",
     "title": "Presidential Election Results",
     "startTime": "2026-07-04T22:00:00.000",
     "endTime": "2026-07-04T23:00:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "421309781_1783216800000_433551012",
+    "id": "cbb17a59_20260704T2200_7c9672f9",
     "title": "Free Play / Johann Sebastian Joust",
     "startTime": "2026-07-04T22:00:00.000",
     "endTime": "2026-07-05T01:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Video Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "611559714_1783216800000_526582537",
+    "id": "59b24c53_20260704T2200_03f227dd",
     "title": "Party (Lower Alfa Dorm)",
     "startTime": "2026-07-04T22:00:00.000",
     "endTime": "2026-07-05T00:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -1371,14 +1177,12 @@
     "subSchedule": []
   },
   {
-    "id": "49575508_1783218600000_343892948",
+    "id": "dc242de8_20260704T2230_d6d8fb69",
     "title": "Iron Bartender",
     "startTime": "2026-07-04T22:30:00.000",
     "endTime": "2026-07-05T00:30:00.000",
     "locationKey": "picnic-tables",
     "locationDisplayName": "Canopy",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "18+"
@@ -1386,27 +1190,23 @@
     "subSchedule": []
   },
   {
-    "id": "980804450_1783220400000_982518793",
+    "id": "8a0da7e6_20260704T2300_c17bd710",
     "title": "Blood on the Clocktower",
     "startTime": "2026-07-04T23:00:00.000",
     "endTime": "2026-07-05T01:00:00.000",
     "locationKey": "gaming",
     "locationDisplayName": "Gaming",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []
   },
   {
-    "id": "530947669_1783224000000_590535442",
+    "id": "5204be45_20260705T0000_f8bd10a3",
     "title": "Adult Swim",
     "startTime": "2026-07-05T00:00:00.000",
     "endTime": "2026-07-05T02:00:00.000",
     "locationKey": "pool",
     "locationDisplayName": "Pool",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -1414,14 +1214,12 @@
     "subSchedule": []
   },
   {
-    "id": "662146075_1783224000000_526582537",
+    "id": "e566be17_20260705T0000_03f227dd",
     "title": "After Dark Party (Lower Alfa Dorm)",
     "startTime": "2026-07-05T00:00:00.000",
     "endTime": "2026-07-05T02:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "21+"
@@ -1429,14 +1227,12 @@
     "subSchedule": []
   },
   {
-    "id": "388856022_1783260000000_526582537",
+    "id": "4801a516_20260705T1000_03f227dd",
     "title": "Coffee Service",
     "startTime": "2026-07-05T10:00:00.000",
     "endTime": "2026-07-05T11:00:00.000",
     "locationKey": "mayfield",
     "locationDisplayName": "Lower Mayfield",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [
       "SF"
@@ -1444,14 +1240,12 @@
     "subSchedule": []
   },
   {
-    "id": "642922614_1783263600000_882378525",
+    "id": "f531081e_20260705T1100_1777cb38",
     "title": "Con in Review",
     "startTime": "2026-07-05T11:00:00.000",
     "endTime": "2026-07-05T12:00:00.000",
     "locationKey": "cafeteria",
     "locationDisplayName": "Lodge",
-    "track": null,
-    "presenter": null,
     "details": null,
     "attributes": [],
     "subSchedule": []

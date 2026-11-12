@@ -27,8 +27,6 @@ class Event {
   final DateTime endTime;
   final String? locationKey;
   final String? locationDisplayName;
-  final String? track;
-  final String? presenter;
   final String? details;
 
   /// Short codes parsed from `[TAG]` tokens in the source cell.
@@ -45,8 +43,6 @@ class Event {
     required this.endTime,
     this.locationKey,
     this.locationDisplayName,
-    this.track,
-    this.presenter,
     this.details,
     this.attributes = const [],
     this.subSchedule = const [],
@@ -69,8 +65,6 @@ class Event {
         endTime: endTime,
         locationKey: locationKey,
         locationDisplayName: locationDisplayName,
-        track: track,
-        presenter: presenter,
         details: details ?? this.details,
         attributes: attributes,
         subSchedule: subSchedule,
@@ -83,8 +77,6 @@ class Event {
         'endTime': endTime.toIso8601String(),
         'locationKey': locationKey,
         'locationDisplayName': locationDisplayName,
-        'track': track,
-        'presenter': presenter,
         'details': details,
         'attributes': attributes,
         'subSchedule': subSchedule.map((s) => s.toJson()).toList(),
@@ -97,8 +89,6 @@ class Event {
         endTime: DateTime.parse(json['endTime'] as String),
         locationKey: json['locationKey'] as String?,
         locationDisplayName: json['locationDisplayName'] as String?,
-        track: json['track'] as String?,
-        presenter: json['presenter'] as String?,
         details: json['details'] as String?,
         attributes: (json['attributes'] as List<dynamic>?)
                 ?.map((e) => e as String)

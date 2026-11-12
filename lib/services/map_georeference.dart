@@ -53,6 +53,9 @@ class MapGeoReference {
     final px = _x[0] * lng + _x[1] * lat + _x[2];
     final py = _y[0] * lng + _y[1] * lat + _y[2];
     const margin = 0.06;
+    // NaN compares false against everything, so it would slip past the bounds
+    // check below (possible only if the control points were degenerate).
+    if (px.isNaN || py.isNaN) return null;
     if (px < -margin || px > 1 + margin || py < -margin || py > 1 + margin) {
       return null;
     }

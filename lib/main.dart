@@ -11,7 +11,13 @@ import 'services/notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final notifications = NotificationService();
-  await notifications.init();
+  // Reminders are optional; a plugin failure here must not leave the user on
+  // a blank launch screen. init() retries on first use.
+  try {
+    await notifications.init();
+  } catch (e) {
+    debugPrint('NotificationService.init failed; will retry on use: $e');
+  }
   // Supabase is optional: it powers the live cart layer on the venue map.
   // Without it the rest of the app (schedule, map, info) still works offline.
   if (AppConfig.hasSupabaseConfig) {

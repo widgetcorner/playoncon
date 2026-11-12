@@ -75,18 +75,6 @@ class EventDetailPage extends ConsumerWidget {
                     ),
                   ),
                 ],
-                if (event.track != null)
-                  _DetailRow(
-                    icon: Icons.label_outline,
-                    label: event.track!,
-                    semanticLabel: 'Track: ${event.track!}',
-                  ),
-                if (event.presenter != null)
-                  _DetailRow(
-                    icon: Icons.person_outline,
-                    label: event.presenter!,
-                    semanticLabel: 'Presenter: ${event.presenter!}',
-                  ),
                 if (event.attributes.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   AttributePillRow(codes: event.attributes, dense: false),

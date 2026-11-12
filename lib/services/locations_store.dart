@@ -25,11 +25,6 @@ class LocationsStore {
     return File('${dir.path}/$_overrideFileName');
   }
 
-  Future<bool> hasOverride() async {
-    final f = await _overrideFile();
-    return f.exists();
-  }
-
   Future<List<VenueLocation>> load() async {
     final f = await _overrideFile();
     if (await f.exists()) {

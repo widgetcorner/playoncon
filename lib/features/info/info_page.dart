@@ -242,7 +242,8 @@ class BetaPill extends StatelessWidget {
   }
 }
 
-/// Live countdown to Thursday 4 PM local. Hidden once the moment has passed
+/// Live countdown to Thursday 4 PM Central (venue time, wherever the device
+/// is — see [AppConfig.eventStart]). Hidden once the moment has passed
 /// (or when [POC_EVENT_THURSDAY] isn't configured).
 class _CountdownCard extends ConsumerStatefulWidget {
   const _CountdownCard();

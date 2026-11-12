@@ -43,8 +43,4 @@ class EventAttribute {
     if (hit != null) return hit;
     return EventAttribute(code: norm, label: norm);
   }
-
-  /// Every code we ship a built-in label for. Used by an in-app legend.
-  static List<EventAttribute> get knownAttributes =>
-      _known.values.toSet().toList();
 }

@@ -5,8 +5,9 @@ the Alabama 4-H Center in Columbiana, AL.
 
 Built with Flutter for **iOS and Android**, Play On Con is **offline-first**: the full
 schedule and venue map work with no connectivity, so attendees can plan their weekend
-even in a cabin with one bar of signal. There is no backend — a published Google Sheet is
-the single source of truth.
+even in a cabin with one bar of signal. The schedule comes straight from the organizers'
+Google Sheet; the only service the app talks to beyond that is an optional live golf-cart
+feed.
 
 ![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20Android-2D5E3E)
 ![Flutter](https://img.shields.io/badge/Flutter-3-blue?logo=flutter)
@@ -28,6 +29,8 @@ the single source of truth.
 - **Attribute tags.** Sessions surface badges parsed from the sheet — `21+`, `Sensory
   Friendly`, `Sign up at Open Gaming`, and more — with unknown tags passing through
   gracefully.
+- **Live golf carts.** When configured, shuttle carts appear on the map in real time,
+  broadcast by the companion drivers' app.
 - **Discord + sync status.** A quick link to the community and a clear "last synced" /
   manual-refresh control.
 
@@ -37,19 +40,20 @@ the single source of truth.
 |---|---|
 | Framework | Flutter + Dart 3 |
 | State | [Riverpod](https://riverpod.dev) |
-| Data ingest | `http` + `csv` (Google Sheet published as CSV) |
+| Data ingest | Google Sheets API v4 (keeps merged cells → real durations); published-CSV fallback via `http` + `csv` |
 | Offline cache | `path_provider` (on-device JSON cache + bundled fallback) |
 | Connectivity | `connectivity_plus` (auto re-sync when back online) |
 | Reminders | `flutter_local_notifications` + `timezone` + `flutter_timezone` |
 | Location | `geolocator` (you-are-here dot) |
+| Live carts | `supabase_flutter` (read-only Realtime; optional) |
 | Misc | `url_launcher`, `intl`, `scrollable_positioned_list` |
-| Backend | **None** — a Google Sheet CSV is the only data source |
+| Backend | **None of our own** — the Google Sheet is the schedule source; Supabase only relays cart positions |
 
 ## How it works
 
 ```
-Google Sheet (grid CSV, one tab per day-range)
-        │  http + csv
+Google Sheet (grid, one tab per day-range)
+        │  Sheets API v4 (rows + merges) — or published CSV as a fallback
         ▼
 CsvScheduleParser ──► Events (with attributes + resolved venue)
         │                     │
@@ -59,12 +63,14 @@ schedule_cache.json     assets/data/locations.json (venue pins)
         │
         ▼
 ScheduleRepository (Riverpod StateNotifier) ──► Schedule / Map / Info UI
+
+Supabase Realtime (cart_positions) ──► cartPositionsProvider ──► cart markers on the map
 ```
 
 The schedule is a **2-D grid** (venues across the top, time down the side), not a row-per-
 event list. The parser walks the grid, anchors day-of-week rows to real calendar dates,
-handles late-night roll-over (a 1 AM after a PM time is "tomorrow"), strips `[TAG]` codes
-from cell text, and matches each venue column to a map pin. On first launch with no network
+handles late-night roll-over (a 1 AM after a PM time is "tomorrow"), takes each session's
+length from its merged cells, strips tag emoji / `[TAG]` codes from cell text, and matches each venue column to a map pin. On first launch with no network
 it serves a bundled fallback schedule; thereafter it caches the last good sync and refreshes
 automatically when connectivity returns.
 
@@ -83,7 +89,8 @@ lib/
     event_attribute.dart         [TAG] → label/icon registry
     venue_location.dart          map hotspot (normalized rect + aliases)
   services/
-    csv_parser.dart              grid-CSV walker
+    csv_parser.dart              grid walker (CSV text or Sheets API rows + merges)
+    sheets_api_client.dart       Sheets API v4 fetch
     schedule_repository.dart     fetch / cache / expose events
     saved_events_store.dart      "My Schedule" + reminder persistence
     notification_service.dart    local reminder scheduling
@@ -91,6 +98,7 @@ lib/
     location_service.dart        device position stream
     map_georeference.dart        GPS → map-image coords (affine fit)
     network_monitor.dart         connectivity stream
+    cart_positions_repository.dart  live golf-cart stream (Supabase Realtime)
   features/
     schedule/                    All Sessions / My Schedule, detail, reminders
     map/                         venue map (pins, info sheet, hotspot editor)
@@ -100,7 +108,7 @@ assets/
   images/venue-map.png           annotated venue diagram
   data/locations.json            bundled hotspot rects (normalized 0–1)
   data/fallback-schedule.json    first-launch offline schedule
-test/                            CSV parser + grid/tag fixtures
+test/                            parser, reliability, layout + accessibility tests
 ```
 
 ## Getting started
@@ -121,10 +129,15 @@ debug run needs them on the command line:
 
 ```bash
 flutter run -d <device-id> \
-  --dart-define=POC_SCHEDULE_CSV_URL='<csv-url>[,<csv-url>...]' \
+  --dart-define=POC_SHEETS_API_KEY='<sheets-api-key>' \
+  --dart-define=POC_SHEET_ID='<spreadsheet-id>' \
+  --dart-define=POC_SHEET_GIDS='<gid>[,<gid>...]' \
   --dart-define=POC_DISCORD_INVITE_URL='<discord-invite-url>' \
   --dart-define=POC_EVENT_THURSDAY=YYYY-MM-DD
 ```
+
+Everything except the schedule source and `POC_EVENT_THURSDAY` is optional; see
+[`CLAUDE.md`](CLAUDE.md) for the full list.
 
 The canonical production values live in [`scripts/build-testflight.sh`](scripts/build-testflight.sh)
 and [`scripts/build-play.sh`](scripts/build-play.sh) — copy them from there.
@@ -133,10 +146,12 @@ and [`scripts/build-play.sh`](scripts/build-play.sh) — copy them from there.
 
 | Define | Purpose |
 |---|---|
-| `POC_SCHEDULE_CSV_URL` | Comma-separated list of published CSV URLs (one per sheet tab) |
+| `POC_SHEETS_API_KEY`, `POC_SHEET_ID`, `POC_SHEET_GIDS` | Sheets API source (preferred): key, spreadsheet ID, comma-separated tab gids |
+| `POC_SCHEDULE_CSV_URL` | Fallback source: comma-separated published CSV URLs (one per tab) |
+| `POC_EVENT_THURSDAY` | `yyyy-MM-dd`; anchors the grid to real calendar dates |
 | `POC_DISCORD_INVITE_URL` | Discord invite link |
-| `POC_EVENT_THURSDAY` | `yyyy-MM-dd`; anchors the grid CSV to real calendar dates |
-| `POC_ONESIGNAL_APP_ID` | OneSignal app id (reserved for future push) |
+| `POC_SCHEDULE_VIEW_URL`, `POC_PROGRAM_URL` | "Printable schedule" and "Program" tiles on the Info tab |
+| `POC_SUPABASE_URL`, `POC_SUPABASE_PUBLISHABLE_KEY` | Live golf-cart layer; both unset = layer off |
 
 > `--dart-define` values are baked at build time — changing one requires a fresh
 > `flutter run`, not a hot reload.

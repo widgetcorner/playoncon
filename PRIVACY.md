@@ -107,13 +107,13 @@ The app shows the schedule and the map, remembers the sessions tapped to save, a
 
 ### On-device behavior
 
-- The schedule is fetched from one or more **published Google Sheet CSV URLs** (`POC_SCHEDULE_CSV_URL`, comma-separated) via plain `http`. Successful responses are cached to `<appDocs>/schedule_cache.json`. On first launch with no network, a bundled `assets/data/fallback-schedule.json` is used.
+- The schedule is fetched from the **Google Sheets API v4** (`sheets.googleapis.com`, using the bundled read-only `POC_SHEETS_API_KEY` for the sheet named by `POC_SHEET_ID`) via plain `http`. Builds without those values fall back to one or more **published Google Sheet CSV URLs** (`POC_SCHEDULE_CSV_URL`, comma-separated). Successful responses are cached to `<appDocs>/schedule_cache.json`. On first launch with no network, a bundled `assets/data/fallback-schedule.json` is used.
 - **Saved sessions** live in `<appDocs>/saved_events.json` as a map of event-id → `Reminder`. IDs are a hash of `title|start|location`, so a save survives re-sync unless the cell text/time/venue changes.
 - **Last custom reminder** lives in `<appDocs>/last_custom_reminder.json`.
 - **Hotspot overrides** (from the debug-only editor, `kDebugMode` only) live in `<appDocs>/locations_override.json`. The editor is not reachable in release builds.
 - `geolocator` produces position updates only after the user enables the locate FAB on the Map tab. The `currentPositionProvider` (Riverpod) yields `null` until then. Positions are projected to map-image coordinates by `MapGeoReference` (least-squares affine fit) **in-process**; nothing is transmitted or persisted.
 - `connectivity_plus` watches online/offline state to trigger schedule re-sync on reconnect.
-- `flutter_local_notifications` + `timezone` schedules **device-local** reminders. Past fire-times are skipped. No push server, no OneSignal write (the `POC_ONESIGNAL_APP_ID` define is reserved for future use and currently unused at runtime).
+- `flutter_local_notifications` + `timezone` schedules **on-device** reminders (in venue time, America/Chicago). Past fire-times are skipped. No push server and no push SDK.
 
 ### Permissions declared
 
@@ -124,8 +124,9 @@ The app shows the schedule and the map, remembers the sessions tapped to save, a
 
 | Destination | Direction | Purpose |
 |---|---|---|
-| `POC_SCHEDULE_CSV_URL` (Google Sheets `tq?...&tqx=out:csv` exports) | Read | Schedule ingest |
-| `POC_SUPABASE_URL` (Supabase REST + Realtime) | Read | Cart positions: one-shot fetch of `carts` + recent `cart_positions`, then a Realtime subscription to inserts on `public:cart_positions` |
+| `sheets.googleapis.com` (Google Sheets API v4, `POC_SHEET_ID`) | Read | Schedule ingest (release builds) |
+| `POC_SCHEDULE_CSV_URL` (Google Sheets CSV exports) | Read | Schedule ingest, only in builds without the Sheets API values |
+| `POC_SUPABASE_URL` (Supabase REST + Realtime) | Read | Cart positions: one-shot fetch of `carts` + recent `cart_positions`, then a Realtime subscription to inserts and updates on `public:cart_positions` |
 | `POC_DISCORD_INVITE_URL`, `POC_PROGRAM_URL`, `POC_SCHEDULE_VIEW_URL` | Read (via `url_launcher`) | Only when the user taps the corresponding Info-tab tile; opens the system browser or the Discord app |
 
 No write to any of the above. The app does not call `post_position` or any other Supabase RPC; that is exclusive to the driver app.
@@ -143,7 +144,7 @@ The app's runtime dependencies are limited to:
 
 - `flutter`, `cupertino_icons` (framework)
 - `http`, `csv` (schedule ingest)
-- `path_provider`, `shared_preferences` (on-device storage)
+- `path_provider` (on-device storage; `shared_preferences` is present only as a dependency of `supabase_flutter`)
 - `flutter_riverpod` (state)
 - `connectivity_plus` (online/offline)
 - `url_launcher` (external links)

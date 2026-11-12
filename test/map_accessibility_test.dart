@@ -6,11 +6,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:playoncon/app_navigation.dart';
 import 'package:playoncon/features/map/venue_map_page.dart';
 import 'package:playoncon/models/cart_position.dart';
+import 'package:playoncon/models/event.dart';
 import 'package:playoncon/models/venue_location.dart';
+import 'package:playoncon/services/app_clock.dart';
 import 'package:playoncon/services/calibration_store.dart';
 import 'package:playoncon/services/cart_positions_repository.dart';
+import 'package:playoncon/services/last_tab_store.dart';
 import 'package:playoncon/services/location_service.dart';
 import 'package:playoncon/services/schedule_repository.dart';
 import 'package:playoncon/theme/poc_theme.dart';
@@ -57,11 +61,24 @@ CartPosition _cart(String name) => CartPosition(
   updatedAt: DateTime(2026, 7, 4),
 );
 
+class _FixedSchedule extends ScheduleRepository {
+  _FixedSchedule(super.ref, List<Event> events) {
+    state = ScheduleState(events: events);
+  }
+
+  @override
+  Future<void> bootstrap() async {}
+}
+
 Future<void> _openMap(
   WidgetTester tester, {
+  List<Event>? events,
+  DateTime Function()? clock,
   double textScale = 1,
   bool locationGranted = false,
+  int selectedTab = mapTabIndex,
   Stream<Map<String, CartPosition>>? carts,
+  Stream<Position>? positions,
   VoidCallback? onPositionSubscribed,
 }) async {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -81,13 +98,21 @@ Future<void> _openMap(
         venueLocationsProvider.overrideWith((_) async => _places),
         mapDebugToolsProvider.overrideWithValue(false),
         calibrationStoreProvider.overrideWithValue(_EmptyCalibrationStore()),
-        scheduleRepositoryProvider.overrideWith(ScheduleRepository.new),
+        if (events == null)
+          scheduleRepositoryProvider.overrideWith(ScheduleRepository.new)
+        else
+          scheduleRepositoryProvider.overrideWith(
+            (ref) => _FixedSchedule(ref, events),
+          ),
+        if (clock != null) appClockProvider.overrideWithValue(clock),
+        // The map only streams GPS while its tab is selected.
+        selectedTabProvider.overrideWith((_) => LastTabStore(selectedTab)),
         cartPositionsProvider.overrideWith(
           (_) => carts ?? Stream.value(const {}),
         ),
         currentPositionProvider.overrideWith((_) {
           onPositionSubscribed?.call();
-          return Stream.value(_position);
+          return positions ?? Stream.value(_position);
         }),
       ],
       child: MaterialApp(
@@ -247,5 +272,63 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Location is off.'), findsOneWidget);
     expect(subscriptions, 0);
+  });
+
+  testWidgets('an open venue sheet follows the session clock', (
+    tester,
+  ) async {
+    Event session(String title, int hour) => Event(
+      id: title,
+      title: title,
+      startTime: DateTime(2026, 7, 3, hour),
+      endTime: DateTime(2026, 7, 3, hour + 1),
+      locationKey: 'theater',
+      locationDisplayName: 'Theater',
+    );
+    var now = DateTime(2026, 7, 3, 19, 58);
+    await _openMap(
+      tester,
+      events: [session('Werewolf', 19), session('Karaoke', 20)],
+      clock: () => now,
+    );
+    await tester.tap(find.byKey(const ValueKey('venue-pin-theater')));
+    await tester.pumpAndSettle();
+    expect(find.text('Now: Werewolf'), findsOneWidget);
+
+    now = DateTime(2026, 7, 3, 20, 0, 30);
+    await tester.pump(const Duration(minutes: 1));
+    expect(find.text('Now: Werewolf'), findsNothing);
+    expect(find.text('Now: Karaoke'), findsOneWidget);
+  });
+
+  testWidgets('locate says it is searching before the first GPS fix', (
+    tester,
+  ) async {
+    final positions = StreamController<Position>();
+    addTearDown(positions.close);
+    await _openMap(tester, locationGranted: true, positions: positions.stream);
+    await tester.tap(find.byTooltip('Center on my location'));
+    await tester.pump();
+    expect(find.text('Finding your location\u2026'), findsOneWidget);
+  });
+
+  testWidgets('GPS only streams while the Map tab is selected', (tester) async {
+    // Every tab stays mounted, so the map must not hold the position stream
+    // open behind the Schedule and Info tabs.
+    var subscriptions = 0;
+    await _openMap(
+      tester,
+      locationGranted: true,
+      selectedTab: 0,
+      onPositionSubscribed: () => subscriptions++,
+    );
+    expect(subscriptions, 0);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(VenueMapPage)),
+    );
+    container.read(selectedTabProvider.notifier).state = mapTabIndex;
+    await tester.pumpAndSettle();
+    expect(subscriptions, 1);
   });
 }

@@ -130,6 +130,10 @@ class _MapBodyState extends ConsumerState<_MapBody>
 
   // View-mode (Concept C) state.
   String? _selectedVenueKey; // pin whose info sheet is open
+  // Re-evaluates the open sheet's "Now / Next" line once a minute, so it
+  // follows session boundaries instead of freezing at the moment of the tap.
+  // Runs only while a pin is selected and the Map tab is showing.
+  Timer? _statusTicker;
   bool _overview = false; // Overview ⇄ Detail zoom preset
   bool _didInitialFrame = false; // applied the Detail framing once
 
@@ -207,9 +211,20 @@ class _MapBodyState extends ConsumerState<_MapBody>
     if (_stream != null && _listener != null) {
       _stream!.removeListener(_listener!);
     }
+    _statusTicker?.cancel();
     _focusAnim.dispose();
     _transform.dispose();
     super.dispose();
+  }
+
+  void _keepStatusFresh(bool wanted) {
+    if (wanted == (_statusTicker != null)) return;
+    _statusTicker?.cancel();
+    _statusTicker = wanted
+        ? Timer.periodic(const Duration(minutes: 1), (_) {
+            if (mounted) setState(() {});
+          })
+        : null;
   }
 
   /// Handles a "Show on map" request: select that pin, drop to Detail, and
@@ -379,7 +394,13 @@ class _MapBodyState extends ConsumerState<_MapBody>
     if (_locationOn) {
       // Already tracking → recenter on the current fix.
       final pos = ref.read(currentPositionProvider).value;
-      if (pos == null) return;
+      if (pos == null) {
+        // No fix yet (GPS still warming up, or indoors). Say so, and center
+        // as soon as one arrives rather than ignoring the tap.
+        setState(() => _pendingCenterOnLocation = true);
+        _snack('Finding your location\u2026');
+        return;
+      }
       final p = MapGeoReference.instance.project(pos.latitude, pos.longitude);
       if (p != null) {
         if (_overview) setState(() => _overview = false);
@@ -545,11 +566,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
   void _addHotspot() async {
     final result = await showDialog<({String key, String displayName})>(
       context: context,
-      builder: (_) => const _NameDialog(
-        initialKey: '',
-        initialDisplayName: '',
-        title: 'New hotspot',
-      ),
+      builder: (_) => const _NameDialog(title: 'New hotspot'),
     );
     if (result == null) return;
     if (_draft.any((l) => l.key == result.key)) {
@@ -685,9 +702,16 @@ class _MapBodyState extends ConsumerState<_MapBody>
     }
     final imageRatio = _imageSize!.width / _imageSize!.height;
 
-    // "You are here" dot: only stream location once enabled (no launch prompt).
+    // "You are here" dot: only stream location once enabled (no launch prompt),
+    // and only while the Map tab is showing. RootShell keeps every tab mounted
+    // in an IndexedStack, so without the tab check high-accuracy GPS would run
+    // all day behind the Schedule and Info tabs. The provider is autoDispose:
+    // dropping this watch stops the stream, and returning restarts it.
+    final onMapTab = ref.watch(
+      selectedTabProvider.select((index) => index == mapTabIndex),
+    );
     Offset? dotNorm;
-    if (_locationOn && !_editing) {
+    if (_locationOn && !_editing && onMapTab) {
       final pos = ref.watch(currentPositionProvider).value;
       if (pos != null) {
         dotNorm = MapGeoReference.instance.project(pos.latitude, pos.longitude);
@@ -722,6 +746,7 @@ class _MapBodyState extends ConsumerState<_MapBody>
       ref.watch(scheduleRepositoryProvider); // rebuild when the schedule syncs
       selectedStatus = _statusFor(selectedLoc.key);
     }
+    _keepStatusFresh(selectedLoc != null && onMapTab);
 
     // Live golf-cart positions (empty map when Supabase isn't configured or in
     // editor mode — the cart layer never appears while editing hotspots).
@@ -876,7 +901,9 @@ class _MapBodyState extends ConsumerState<_MapBody>
                           right:
                               constraints.maxWidth - controlsRegion.right + 10,
                           child: _CalibrationHud(
-                            position: ref.watch(currentPositionProvider).value,
+                            position: onMapTab
+                                ? ref.watch(currentPositionProvider).value
+                                : null,
                             pointCount: calibrationCount,
                           ),
                         ),
@@ -1054,7 +1081,6 @@ class _MapBodyState extends ConsumerState<_MapBody>
               areaH: h,
               offsetX: dx,
               offsetY: dy,
-              editing: true,
               selected: _selectedKey == loc.key,
               onTap: () => _onHotspotTapped(loc),
               onLongPress: () => _editHotspot(loc),
@@ -1931,7 +1957,7 @@ class _VenueInfoSheet extends StatelessWidget {
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: _StatusLine(status: status),
+                  child: _StatusLine(status: status!),
                 ),
               ],
             ],
@@ -1943,23 +1969,13 @@ class _VenueInfoSheet extends StatelessWidget {
 }
 
 class _StatusLine extends StatelessWidget {
-  final _VenueStatus? status;
+  final _VenueStatus status;
   const _StatusLine({required this.status});
 
   @override
   Widget build(BuildContext context) {
     final pal = PocPalette.of(context);
     final s = status;
-    if (s == null) {
-      return Text(
-        'Open all weekend',
-        style: TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: pal.textSoft,
-        ),
-      );
-    }
     final label = s.isNow
         ? 'Now: ${s.title}'
         : '${DateFormat('h:mm a').format(s.time!)} · ${s.title}';
@@ -2029,12 +2045,11 @@ class _HotspotWidget extends StatelessWidget {
   final double areaH;
   final double offsetX;
   final double offsetY;
-  final bool editing;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final void Function(double dx, double dy)? onMove;
-  final void Function(double dx, double dy)? onResize;
+  final VoidCallback onLongPress;
+  final void Function(double dx, double dy) onMove;
+  final void Function(double dx, double dy) onResize;
 
   const _HotspotWidget({
     required this.location,
@@ -2042,12 +2057,11 @@ class _HotspotWidget extends StatelessWidget {
     required this.areaH,
     required this.offsetX,
     required this.offsetY,
-    required this.editing,
     required this.selected,
     required this.onTap,
-    this.onLongPress,
-    this.onMove,
-    this.onResize,
+    required this.onLongPress,
+    required this.onMove,
+    required this.onResize,
   });
 
   @override
@@ -2074,9 +2088,7 @@ class _HotspotWidget extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         onLongPress: onLongPress,
-        onPanUpdate: onMove == null
-            ? null
-            : (d) => onMove!(d.delta.dx, d.delta.dy),
+        onPanUpdate: (d) => onMove(d.delta.dx, d.delta.dy),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -2085,55 +2097,50 @@ class _HotspotWidget extends StatelessWidget {
               preferBelow: false,
               child: Container(
                 decoration: BoxDecoration(
-                  shape: editing ? BoxShape.rectangle : BoxShape.circle,
-                  borderRadius:
-                      editing ? BorderRadius.circular(4) : null,
+                  borderRadius: BorderRadius.circular(4),
                   color: fill,
                   border: Border.all(color: border, width: borderWidth),
                 ),
-                child: editing
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(2),
-                          child: Text(
-                            location.key,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: scheme.onTertiaryContainer,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-            if (editing && onResize != null)
-              Positioned(
-                right: -8,
-                bottom: -8,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onPanUpdate: (d) => onResize!(d.delta.dx, d.delta.dy),
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: scheme.tertiary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    child: const Icon(
-                      Icons.open_in_full,
-                      size: 10,
-                      color: Colors.white,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Text(
+                      location.key,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: scheme.onTertiaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ),
+            ),
+            Positioned(
+              right: -8,
+              bottom: -8,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanUpdate: (d) => onResize(d.delta.dx, d.delta.dy),
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: scheme.tertiary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: const Icon(
+                    Icons.open_in_full,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -2233,14 +2240,8 @@ class _HotspotEditSheetState extends State<_HotspotEditSheet> {
 }
 
 class _NameDialog extends StatefulWidget {
-  final String initialKey;
-  final String initialDisplayName;
   final String title;
-  const _NameDialog({
-    required this.initialKey,
-    required this.initialDisplayName,
-    required this.title,
-  });
+  const _NameDialog({required this.title});
 
   @override
   State<_NameDialog> createState() => _NameDialogState();
@@ -2253,8 +2254,8 @@ class _NameDialogState extends State<_NameDialog> {
   @override
   void initState() {
     super.initState();
-    _key = TextEditingController(text: widget.initialKey);
-    _name = TextEditingController(text: widget.initialDisplayName);
+    _key = TextEditingController();
+    _name = TextEditingController();
     _name.addListener(_autoSlug);
   }
 

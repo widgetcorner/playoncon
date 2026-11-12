@@ -20,6 +20,16 @@ class SheetTab {
   });
 }
 
+/// Some of the requested tab gids weren't in the workbook.
+class MissingSheetTabsException implements Exception {
+  final List<String> gids;
+  const MissingSheetTabsException(this.gids);
+
+  @override
+  String toString() =>
+      'MissingSheetTabsException: no tab with gid ${gids.join(', ')}';
+}
+
 /// Fetches a Google Sheets workbook with merged-cell metadata attached. Used
 /// instead of the CSV export endpoint because CSV drops merges entirely —
 /// which the Play On Con schedule relies on to indicate multi-hour events.
@@ -97,6 +107,12 @@ class SheetsApiClient {
 
       result.add(SheetTab(gid: gid, rows: rows, merges: merges));
     }
+
+    // A requested tab that isn't in the workbook (deleted, or its gid changed)
+    // must fail the sync: returning the others would cache a schedule with a
+    // day silently missing, and the empty-sync guard wouldn't catch it.
+    final missing = wanted.difference({for (final t in result) t.gid});
+    if (missing.isNotEmpty) throw MissingSheetTabsException(missing.toList());
 
     result.sort((a, b) => gids.indexOf(a.gid).compareTo(gids.indexOf(b.gid)));
     return result;

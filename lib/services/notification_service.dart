@@ -7,25 +7,40 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/event.dart';
 import 'saved_events_store.dart';
+import 'stable_hash.dart';
 
 /// Schedules on-device reminder notifications for saved events.
 ///
-/// This is local (device alarm) notification — distinct from the OneSignal
-/// push planned for M2, which is for broadcast announcements. Event times in
-/// the schedule are naive wall-clock `DateTime`s, so we schedule against the
-/// device's local timezone to match what the schedule shows.
+/// This is local (device alarm) notification, not server push. Event times in
+/// the schedule are naive wall-clock `DateTime`s meaning venue time, so
+/// reminders are scheduled in [venueTimeZone] — not the device's zone, which
+/// would fire an hour off for anyone who saved a session before travelling.
 class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
-  bool _initialized = false;
+  Future<void>? _initializing;
+
+  /// The Alabama 4-H Center's zone; every time in the schedule is in it.
+  static const venueTimeZone = 'America/Chicago';
 
   static const _channelId = 'event_reminders';
   static const _channelName = 'Event reminders';
   static const _channelDescription =
       'Reminders for sessions you saved to My Schedule';
 
-  Future<void> init() async {
-    if (_initialized) return;
+  /// Safe to call from anywhere, any number of times: concurrent callers
+  /// share one initialization, and a failed attempt is retried on the next
+  /// call rather than leaving the service half-configured.
+  Future<void> init() => _initializing ??= () async {
+    try {
+      await _init();
+    } catch (_) {
+      _initializing = null;
+      rethrow;
+    }
+  }();
+
+  Future<void> _init() async {
     tz_data.initializeTimeZones();
     try {
       final info = await FlutterTimezone.getLocalTimezone();
@@ -52,7 +67,6 @@ class NotificationService {
           description: _channelDescription,
           importance: Importance.high,
         ));
-    _initialized = true;
   }
 
   /// Requests notification permission. Call this contextually — when the user
@@ -79,17 +93,44 @@ class NotificationService {
   }
 
   // Notification IDs are ints; derive a stable positive one from the event ID.
-  int _idFor(String eventId) => eventId.hashCode & 0x7fffffff;
+  int _idFor(String eventId) => fnv1a32(eventId) & 0x7fffffff;
+
+  static tz.Location _venueLocation() {
+    try {
+      return tz.getLocation(venueTimeZone);
+    } on tz.LocationNotFoundException {
+      // The zone database isn't loaded yet (init() hasn't run).
+      tz_data.initializeTimeZones();
+      return tz.getLocation(venueTimeZone);
+    }
+  }
+
+  /// The instant [reminder] should fire for [event], or null when there is
+  /// nothing to schedule: no reminder was chosen, or the moment has already
+  /// passed. [event]'s start is read as venue time; [now] is any instant.
+  static tz.TZDateTime? fireTime(Event event, Reminder reminder, DateTime now) {
+    final lead = reminder.leadMinutes;
+    if (lead == null) return null;
+    final s = event.startTime;
+    final fireAt = tz.TZDateTime(
+      _venueLocation(),
+      s.year,
+      s.month,
+      s.day,
+      s.hour,
+      s.minute,
+    ).subtract(Duration(minutes: lead));
+    return fireAt.isAfter(now) ? fireAt : null;
+  }
 
   /// Schedules (or reschedules) the reminder for [event]. A none reminder
   /// simply cancels any existing one. Fire-times in the past are skipped.
   Future<void> schedule(Event event, Reminder reminder) async {
     await init();
     await cancel(event.id);
-    final lead = reminder.leadMinutes;
-    if (lead == null) return;
-    final fireAt = event.startTime.subtract(Duration(minutes: lead));
-    if (!fireAt.isAfter(DateTime.now())) return;
+    final fireAt = fireTime(event, reminder, DateTime.now());
+    if (fireAt == null) return;
+    final lead = reminder.leadMinutes!;
 
     final loc = event.locationDisplayName;
     final timeStr = DateFormat('h:mm a').format(event.startTime);
@@ -101,7 +142,7 @@ class NotificationService {
       id: _idFor(event.id),
       title: event.title,
       body: body,
-      scheduledDate: tz.TZDateTime.from(fireAt, tz.local),
+      scheduledDate: fireAt,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,

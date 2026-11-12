@@ -1,13 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Play On Con — Map view ("Concept C") data, Dart.
-// Everything the redrawn venue map needs, beyond what's already in your repo.
-//
-// Two implementation paths (see design README §"Pick a base"):
-//   PATH A — keep assets/images/venue-map.png. Use the pin POSITIONS already
-//            in assets/data/locations.json (rect center). The Map view uses
-//            kCategoryMeta + kVenueMeta below. ← this app ships PATH A.
-//   PATH B — redraw the base with a CustomPainter. Then also use kVenueLayout
-//            (normalized positions for the redrawn base) + kZoneLabels.
+// Category and per-venue metadata for the pins drawn over
+// assets/images/venue-map.png. Pin POSITIONS are not here: they come from
+// assets/data/locations.json (rect center).
 // ─────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -73,41 +68,3 @@ const VenueMeta kDefaultVenueMeta =
 VenueMeta venueMetaFor(String key) => kVenueMeta[key] ?? kDefaultVenueMeta;
 
 VenueCategoryMeta categoryMetaFor(VenueCategory c) => kCategoryMeta[c]!;
-
-// ─────────────────────────────────────────────────────────────────────────
-// PATH B ONLY — normalized positions (0–1) for the REDRAWN base.
-// Unused by the shipped Path A map; kept for a future vector-base option.
-// Coordinate space: a 560 x 500 unit board (x * 560, y * 500).
-// ─────────────────────────────────────────────────────────────────────────
-class VenuePos { final double nx, ny; const VenuePos(this.nx, this.ny); }
-
-const Map<String, VenuePos> kVenueLayout = {
-  'fire-pit':         VenuePos(0.446, 0.088),
-  'dock-canoes':      VenuePos(0.677, 0.263),
-  'hotel-rooms':      VenuePos(0.308, 0.213),
-  'theater':          VenuePos(0.400, 0.275),
-  'cafeteria':        VenuePos(0.200, 0.338), // Lodge
-  'gaming':           VenuePos(0.077, 0.525),
-  'pool':             VenuePos(0.585, 0.400),
-  'picnic-tables':    VenuePos(0.615, 0.463), // Canopy
-  'mayfield':         VenuePos(0.585, 0.513),
-  'food-truck':       VenuePos(0.123, 0.563),
-  'chapel':           VenuePos(0.400, 0.613),
-  'recreation-field': VenuePos(0.815, 0.363),
-  'sand-volleyball':  VenuePos(0.908, 0.388),
-  'archery':          VenuePos(0.969, 0.313),
-  'mini-golf':        VenuePos(0.831, 0.463),
-  'climbing-wall':    VenuePos(0.846, 0.663),
-  'cottages':         VenuePos(0.538, 0.713),
-};
-
-const VenuePos kYouAreHereDemo = VenuePos(0.50, 0.33); // between Theater & Pool
-
-/// Zone captions for the redrawn base (faint labels). Position is normalized.
-const List<(String, double, double)> kZoneLabels = [
-  ('MAIN CAMP',     0.10, 0.45),
-  ('GAMING & EATS', 0.04, 0.60),
-  ('REC & SPORTS',  0.74, 0.27),
-  ('THE COMMONS',   0.34, 0.67),
-  ('CABINS',        0.43, 0.78),
-];

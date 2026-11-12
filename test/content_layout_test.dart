@@ -29,7 +29,11 @@ final _event = Event(
 
 class _Schedule extends ScheduleRepository {
   _Schedule(super.ref) {
-    state = ScheduleState(events: [_event]);
+    // An offline launch still attempts a sync, which fails.
+    state = ScheduleState(
+      events: [_event],
+      errorMessage: 'No connection to the schedule. Showing the saved copy.',
+    );
   }
 }
 
@@ -48,6 +52,7 @@ class _Notifications extends NotificationService {
 Widget _app(
   Widget page, {
   double textScale = 1,
+  bool online = false,
   _Notifications? notifications,
   ValueNotifier<AppleLayout>? layout,
 }) {
@@ -55,7 +60,7 @@ Widget _app(
     overrides: [
       scheduleRepositoryProvider.overrideWith(_Schedule.new),
       connectivityProvider.overrideWith(
-        (_) => Stream.value(const NetworkStatus(false)),
+        (_) => Stream.value(NetworkStatus(online)),
       ),
       if (notifications != null)
         notificationServiceProvider.overrideWithValue(notifications),
@@ -81,6 +86,22 @@ Widget _app(
 }
 
 void main() {
+  testWidgets('a sync error at large text scrolls instead of overflowing', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(280, 500);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      _app(const SchedulePage(), textScale: 2.5, online: true),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('No connection to the schedule'), findsOneWidget);
+    expect(find.text('Offline — showing cached schedule'), findsNothing);
+  });
+
   testWidgets('offline schedule and saved empty state fit narrow large text', (
     tester,
   ) async {
@@ -92,6 +113,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Offline — showing cached schedule'), findsOneWidget);
+    expect(find.textContaining('No connection to the schedule'), findsNothing);
 
     await tester.ensureVisible(find.text('My Schedule'));
     await tester.pumpAndSettle();
