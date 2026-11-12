@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "app_id": "6782482020",
+  "bundle_id": "com.fuller.playoncon",
+  "version": "2026.10.6+28",
+  "locale": "en-US",
+  "sets": [
+    {
+      "placement_group": "IPHONE_DYNAMIC_ISLAND_MEDIUM_PROFILE",
+      "screenshots": [
+        {
+          "path": "iphone/01-all-sessions.png",
+          "width": 1206,
+          "height": 2622
+        },
+        {
+          "path": "iphone/02-my-schedule.png",
+          "width": 1206,
+          "height": 2622
+        },
+        {
+          "path": "iphone/03-event-detail.png",
+          "width": 1206,
+          "height": 2622
+        },
+        {
+          "path": "iphone/04-venue-map.png",
+          "width": 1206,
+          "height": 2622
+        },
+        {
+          "path": "iphone/05-info.png",
+          "width": 1206,
+          "height": 2622
+        }
+      ]
+    },
+    {
+      "placement_group": "IPAD_13_PROFILE",
+      "screenshots": [
+        {
+          "path": "ipad/01-all-sessions.png",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "path": "ipad/02-my-schedule.png",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "path": "ipad/03-event-detail.png",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "path": "ipad/04-venue-map.png",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "path": "ipad/05-info.png",
+          "width": 2064,
+          "height": 2752
+        }
+      ]
+    },
+    {
+      "placement_group": "IPHONE_DUO_PROFILE",
+      "screenshots": [
+        {
+          "path": "duo-outer/01-all-sessions.png",
+          "width": 1398,
+          "height": 2034
+        },
+        {
+          "path": "duo-outer/02-my-schedule.png",
+          "width": 1398,
+          "height": 2034
+        },
+        {
+          "path": "duo-outer/03-event-detail.png",
+          "width": 1398,
+          "height": 2034
+        },
+        {
+          "path": "duo-outer/04-venue-map.png",
+          "width": 1398,
+          "height": 2034
+        },
+        {
+          "path": "duo-outer/05-info.png",
+          "width": 1398,
+          "height": 2034
+        },
+        {
+          "path": "duo-inner/01-all-sessions.png",
+          "width": 2007,
+          "height": 2853
+        },
+        {
+          "path": "duo-inner/02-my-schedule.png",
+          "width": 2007,
+          "height": 2853
+        },
+        {
+          "path": "duo-inner/03-event-detail.png",
+          "width": 2007,
+          "height": 2853
+        },
+        {
+          "path": "duo-inner/04-venue-map.png",
+          "width": 2007,
+          "height": 2853
+        },
+        {
+          "path": "duo-inner/05-info.png",
+          "width": 2007,
+          "height": 2853
+        }
+      ]
+    }
+  ]
+}

@@ -13,6 +13,10 @@ a release. Keep the Codex and Claude copies of this skill in sync.
 
 Read [the release reference](../../../scripts/RELEASE.md) for credential setup,
 artifact verification, store commands, metadata retries, and iOS export recovery.
+App Store draft screenshots require an explicit request. For that branch, follow
+[the Apple screenshot reference](../../../scripts/APPLE_SCREENSHOTS.md) for native
+iPhone/iPad/Duo captures and exact draft placement checks. This is separate from
+the default TestFlight and Play tester release scope.
 
 ## Establish or resume the release
 

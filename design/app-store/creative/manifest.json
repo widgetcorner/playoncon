@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "app": "Play On Con",
+  "locale": "en-US",
+  "assets": [
+    {
+      "path": "en-US/header.png",
+      "placement": "product_page_header",
+      "locale": "en-US",
+      "width": 3840,
+      "height": 1646,
+      "format": "png",
+      "color_space": "srgb",
+      "channels": 3,
+      "has_alpha": false,
+      "bytes": 610918,
+      "sha256": "f740b4a644321639db91edc2d51d96b6d2313c664218c498d2fb928163caa94e",
+      "source_svg": "sources/header.svg",
+      "source_assets": [
+        {
+          "path": "assets/branding/poc-logo.png",
+          "sha256": "9434076f1dce1131e3ce9f9b4cd573f5cd3ec948e9e4d8d1d6913b6e2c435ee4"
+        }
+      ],
+      "source_app_build": null,
+      "specification_url": "https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications",
+      "specification_verified_on": "2026-10-07",
+      "template_url": "https://devimages-cdn.apple.com/design/resources/download/app-store/creative_assets-product_page_header_template-static.psd",
+      "template_safe_area": {
+        "x": 1097,
+        "y": 493,
+        "width": 1646,
+        "height": 661
+      },
+      "focal_artwork_bounds": {
+        "x": 1126,
+        "y": 540,
+        "width": 1564,
+        "height": 570
+      },
+      "validation": {
+        "exact_dimensions": "passed",
+        "opaque_rgb_png": "passed",
+        "focal_bounds_inside_template_safe_area": "passed",
+        "visual_review": "passed",
+        "visual_review_checks": [
+          "native_resolution_focal_artwork",
+          "full_canvas_storefront_preview",
+          "official_template_safe_area_crop",
+          "independent_read_only_visual_review"
+        ],
+        "reviewed_on": "2026-10-07"
+      }
+    },
+    {
+      "path": "en-US/search-result.png",
+      "placement": "search_results",
+      "locale": "en-US",
+      "width": 3840,
+      "height": 2560,
+      "format": "png",
+      "color_space": "srgb",
+      "channels": 3,
+      "has_alpha": false,
+      "bytes": 836283,
+      "sha256": "dc2d880d73d8e70af7ddd2389598db12c1f4b285f62b78315337a1b9ae99ed4c",
+      "source_svg": "sources/search-result.svg",
+      "source_assets": [
+        {
+          "path": "assets/branding/poc-logo.png",
+          "sha256": "9434076f1dce1131e3ce9f9b4cd573f5cd3ec948e9e4d8d1d6913b6e2c435ee4"
+        },
+        {
+          "path": "design/app-store/iphone/01-all-sessions.png",
+          "sha256": "d49819af64041946f8017058743fc1fd7e2c22aad743b7372e5c09f62afb8e10"
+        },
+        {
+          "path": "design/app-store/iphone/04-venue-map.png",
+          "sha256": "a37673cb21a1eb0f5916780790c5a8adad61db7341a1ca76953b571559c36ae4"
+        }
+      ],
+      "source_app_build": "2026.10.6+28 (existing capture manifest)",
+      "specification_url": "https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications",
+      "specification_verified_on": "2026-10-07",
+      "template_url": "https://devimages-cdn.apple.com/design/resources/download/app-store/creative_assets-search_results_template-static.psd",
+      "template_safe_area": {
+        "x": 836,
+        "y": 765,
+        "width": 2168,
+        "height": 1030
+      },
+      "focal_artwork_bounds": {
+        "x": 893,
+        "y": 810,
+        "width": 2015,
+        "height": 922
+      },
+      "validation": {
+        "exact_dimensions": "passed",
+        "opaque_rgb_png": "passed",
+        "focal_bounds_inside_template_safe_area": "passed",
+        "visual_review": "passed",
+        "visual_review_checks": [
+          "native_resolution_focal_artwork",
+          "full_canvas_storefront_preview",
+          "official_template_safe_area_crop",
+          "independent_read_only_visual_review"
+        ],
+        "reviewed_on": "2026-10-07"
+      }
+    }
+  ],
+  "source_app_version_note": "Project is 2026.10.7+29; the existing iPhone captures are documented as 2026.10.6+28. No app UI or capture content was altered.",
+  "delivery_status": "local_files_only"
+}
