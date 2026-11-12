@@ -8,12 +8,10 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Play On Con shows your current location on the venue map so you can find your way around.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Play On Con shows your current location on the venue map so you can find your way around.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Playoncon</string>
+	<string>Play On Con</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

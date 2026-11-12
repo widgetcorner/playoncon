@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../models/event.dart';
@@ -19,6 +20,13 @@ class EventDescriptions {
   EventDescriptions._(this._byKey);
 
   final Map<String, String> _byKey;
+
+  @visibleForTesting
+  EventDescriptions.fromMap(Map<String, String> byTitle)
+      : _byKey = {
+          for (final entry in byTitle.entries)
+            _normalize(entry.key): entry.value,
+        };
 
   static EventDescriptions? _instance;
 
@@ -44,12 +52,15 @@ class EventDescriptions {
 
   /// Returns the input list with `details` populated where a description is
   /// known. Untouched events come through unchanged.
+  ///
+  /// The bundle is the only source of `details`, so its text always wins —
+  /// including over the copy saved in the schedule cache, which would
+  /// otherwise keep showing last release's wording after an app update.
   List<Event> enrich(List<Event> events) {
     if (_byKey.isEmpty) return events;
     return events.map((e) {
-      if (e.details != null && e.details!.isNotEmpty) return e;
       final hit = lookup(e.title);
-      if (hit == null) return e;
+      if (hit == null || hit == e.details) return e;
       return e.copyWith(details: hit);
     }).toList(growable: false);
   }

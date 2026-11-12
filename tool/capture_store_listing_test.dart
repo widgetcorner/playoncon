@@ -91,8 +91,6 @@ Event _fixtureEvent(Map<String, dynamic> json) {
     endTime: _central(event.endTime),
     locationKey: event.locationKey,
     locationDisplayName: event.locationDisplayName,
-    track: event.track,
-    presenter: event.presenter,
     details: event.details,
     attributes: event.attributes,
     subSchedule: [

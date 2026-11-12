@@ -12,11 +12,14 @@ the why behind major decisions).
 - Flutter + Dart 3, Riverpod for state
 - `http` + `csv` for sheet ingest, `path_provider` for cache, `connectivity_plus` for
   online/offline, `url_launcher` for Discord, `intl` for dates
-- `onesignal_flutter` for push (M2)
+- `supabase_flutter` for the optional live golf-cart layer (read-only Realtime)
+- No push SDK is installed (OneSignal was planned for M2 and dropped from the code; add
+  `onesignal_flutter` + a `POC_ONESIGNAL_APP_ID` define back if push is picked up)
 - `flutter_local_notifications` + `timezone` + `flutter_timezone` for on-device event reminders
 - `scrollable_positioned_list` so "All Sessions" can open scrolled to the current time
 - `geolocator` for the "you are here" dot on the venue map
-- No backend — a Google Sheet published as CSV is the only data source
+- No backend of our own — the Google Sheet (Sheets API v4, or published CSV as a fallback)
+  is the schedule source; Supabase only relays live cart positions
 
 ## File layout (key paths)
 
@@ -31,7 +34,17 @@ lib/
   services/
     csv_parser.dart                   grid walker for CSV (parse) and Sheets API grid (parseGrid, merge-aware)
     sheets_api_client.dart            Sheets API v4 client — pulls rows + merge ranges
-    schedule_repository.dart          fetch/cache/expose events (StateNotifier)
+    schedule_repository.dart          cache/expose events, sync errors, save fix-ups (StateNotifier)
+    schedule_source.dart              ScheduleSource: the Sheets API / CSV fetch, swappable in tests
+    event_descriptions.dart           bundled long-form descriptions → Event.details
+    atomic_file.dart                  temp-file-then-rename writes for the JSON stores
+    stable_hash.dart                  FNV-1a + stableEventId — the persisted event/notification IDs
+    last_tab_store.dart               remembers the selected tab across launches
+    app_clock.dart                    overridable "now" (frozen for store screenshots)
+    cart_positions_repository.dart    live golf-cart stream (Supabase Realtime)
+    server_clock.dart                 server-time estimate for cart staleness
+    calibration_store.dart            walked GPS↔hotspot points for the map fit
+    apple_layout.dart                 native iOS bar-edge / fold / occlusion stream
     locations_store.dart              hotspot read/write + venueLocationsProvider
     saved_events_store.dart           "My Schedule": event ID → Reminder + last custom (persisted)
     notification_service.dart         local reminder scheduling (flutter_local_notifications)
@@ -43,6 +56,8 @@ lib/
                                       PocPalette ThemeExtension for app-specific color roles
                                       (pills, map chrome, brand accents) — widgets read
                                       PocPalette.of(context), never PocColors statics
+  widgets/                            adaptive nav scaffold, Apple layout boundary,
+                                      reduced-motion + progress helpers
   features/
     schedule/  schedule_page (All Sessions / My Schedule tabs), event_detail_page,
                attribute_pill, save_event_action (save + reminder dialog)
@@ -56,6 +71,7 @@ assets/
   data/fallback-schedule.json         used on first launch with no network
 test/
   csv_parser_test.dart + fixtures/    grid parse + tag extraction tests
+  schedule_sync_test.dart             repository sync/cache/error paths with a fake ScheduleSource
 ```
 
 ## Configuration (no hardcoding)
@@ -73,7 +89,8 @@ All environment-specific values pass through `--dart-define`. Read them in
 | `POC_DISCORD_INVITE_URL` | Discord invite |
 | `POC_PROGRAM_URL` | Public link to the full program (Google Doc / hosted PDF) — "Program" tile on the Info page |
 | `POC_EVENT_THURSDAY` | yyyy-MM-dd; anchors the grid CSV to real calendar dates |
-| `POC_ONESIGNAL_APP_ID` | OneSignal app id (M2) |
+| `POC_APP_VERSION` | Version shown on the Info tab; set by the build scripts from `pubspec.yaml` |
+| `POC_CALIBRATION` | `1` exposes the map's GPS calibration walk mode in profile/release builds |
 | `POC_SUPABASE_URL` | Supabase project URL — powers the live golf-cart map layer |
 | `POC_SUPABASE_PUBLISHABLE_KEY` | Supabase default publishable API key (`sb_publishable_...`, not the legacy anon JWT) |
 
@@ -105,7 +122,7 @@ keeps running on the phone, only hot-reload disconnects. USB cable fixes it.
 ```bash
 flutter test                              # all
 flutter test test/csv_parser_test.dart    # parser only
-flutter analyze --no-pub                  # static check
+flutter analyze --no-pub                  # static check (strict-casts + unawaited_futures on)
 ```
 
 ## Sheet format
@@ -181,6 +198,10 @@ so it's approximate (~4% of map size at the fitted points). To recalibrate, edit
 `_points` (lat/lng + the landmark's hotspot rect center as x/y) — the fit
 recomputes automatically; spread points toward the edges and keep ≥3.
 
+- The position stream only runs while the **Map tab is selected**. `RootShell` keeps all
+  three tabs mounted in an `IndexedStack`, so `_MapBody` gates its
+  `ref.watch(currentPositionProvider)` on `selectedTabProvider`; the provider is
+  `autoDispose`, so leaving the tab stops GPS and returning restarts it.
 - Location is **opt-in**: the Map tab's locate FAB (`Icons.location_searching` →
   `my_location`) requests permission on first tap, so nothing prompts at launch.
   Returning users who already granted it get the dot automatically.
@@ -203,10 +224,17 @@ Companion to the **PlayOnConDrivers** app (sibling repo at
 - `lib/services/cart_positions_repository.dart` — `cartPositionsProvider`
   (`StreamProvider<Map<String, CartPosition>>`). Bootstraps with a one-shot
   `carts` lookup (for names) + a recent positions fetch, then subscribes to
-  `client.channel('public:cart_positions').onPostgresChanges(... insert ...)`
+  `client.channel('public:cart_positions')` for Postgres **inserts and updates**
+  (`post_position` upserts, so every post after a cart's first is an UPDATE)
   and sweeps stale entries every 30s. Stale window: 2 min — long enough to
   forgive brief tunnel/garage gaps, short enough that ghosts clear quickly
   after a driver signs off.
+  Age is measured on the **server's** clock (`ServerClock`, estimated from
+  live-update timestamps vs. arrival), not the phone's, so a wrong phone clock
+  can't hide every cart or keep ghosts. The bootstrap fetch has no time filter:
+  `cart_positions` holds one upserted row per cart.
+  A cart first seen after launch gets its `display_name` from a one-off `carts`
+  lookup, then the marker is patched.
 - `lib/features/map/venue_map_page.dart` — watches the provider (short-circuited
   to empty during the debug hotspot editor) and projects each cart's lat/lng
   through `MapGeoReference.instance.project(...)`, same affine as the "you are
@@ -267,13 +295,28 @@ Pins with no column (dorms, archery, pool amenities, etc.) are wayfinding-only.
   (the Gaming building does this). `Outdoors` is the per-event exception, spread across real
   pins via the title-hint fallback above. Renaming a `displayName`/`alias` away from what the
   sheet says (header or hint) orphans those events from the map.
+- A sync that parses to **zero events is treated as a failure** (`EmptyScheduleException`):
+  the cache and on-screen schedule are kept. The parser returns `[]` rather than throwing
+  when it can't find the grid (renamed `Theater` header, wrong gid, unset
+  `POC_EVENT_THURSDAY`), so an empty result means "broken source", never "empty con".
+- A Sheets API sync fails (`MissingSheetTabsException`) if any gid in `POC_SHEET_GIDS` is
+  missing from the workbook, rather than caching a schedule with a day silently gone.
+- Sync failures show `ScheduleRepository.describeError` wording, never the raw exception —
+  `http` errors embed the request URL, which carries the Sheets API key.
+- Concurrent `refresh()` calls share one in-flight fetch. The JSON stores write through
+  `writeStringAtomic` so a kill mid-write can't truncate them.
 - The cache file (`<appDocs>/schedule_cache.json`) and the fallback bundled JSON store
   events with the `attributes` field; old caches without it default to `[]`.
 - "My Schedule" lives in `<appDocs>/saved_events.json` (`savedEventsProvider`) as a map of
   event ID → `Reminder`, where `Reminder.leadMinutes` is `null` (none) / `0` (at start) /
-  `>0` (that many minutes before). IDs are the parser's `title|start|location` hash, so a save
-  survives re-sync unless the sheet cell text/time/venue changes — then it silently drops
-  (acceptable for a con app). Decode tolerates the legacy enum-name strings.
+  `>0` (that many minutes before). IDs come from `stableEventId` (`stable_hash.dart`): FNV-1a of the
+  title, the wall-clock start as text, FNV-1a of the venue — never `String.hashCode` or
+  epoch ms, which vary by SDK and device timezone. A save survives re-sync unless the
+  sheet cell text/time/venue changes. After each
+  successful sync `SavedEventsStore.reconcile` (`SavedReconciliation.plan`) fixes up the saves:
+  a session that moved time or room (same title, unambiguous) keeps its save and gets its
+  reminder rescheduled; a retitled/cancelled one is removed and its notification cancelled.
+  A sync that shrinks the schedule by more than 20% is assumed broken and touches no saves. Decode tolerates the legacy enum-name strings.
 - Saving prompts a reminder dialog (`save_event_action.dart`): once a custom time has been
   picked it leads the list as a one-tap option, followed by **Custom…** (1–120 min wheel),
   **At start time**, **No reminder**. That last custom value persists in
@@ -283,8 +326,9 @@ Pins with no column (dorms, archery, pool amenities, etc.) are wayfinding-only.
   session whose end is after `DateTime.now()` (its day header if it's first of the day),
   falling back to the top when the schedule is entirely past/not-yet-started. Applied once on
   first build with data, so a later sync won't yank the user's scroll position.
-- Reminders are **local** notifications (device alarm), not OneSignal push. Event times are
-  naive wall-clock `DateTime`s, scheduled against the device's local timezone. **Past
+- Reminders are **local** notifications (device alarm), not server push. Event times are
+  naive wall-clock `DateTime`s meaning venue time, scheduled in `America/Chicago`
+  (`NotificationService.venueTimeZone`) so a save made in another timezone still fires on time. **Past
   fire-times are skipped** — the 2025 test schedule won't buzz; only future-dated events do.
 - Reminders need native config already wired: Android core-library desugaring + manifest
   permissions/receivers (`android/app/build.gradle.kts`, `AndroidManifest.xml`) and the iOS

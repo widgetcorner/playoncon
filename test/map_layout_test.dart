@@ -5,10 +5,12 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:playoncon/app_navigation.dart';
 import 'package:playoncon/features/map/venue_map_page.dart';
 import 'package:playoncon/models/venue_location.dart';
 import 'package:playoncon/services/apple_layout.dart';
 import 'package:playoncon/services/calibration_store.dart';
+import 'package:playoncon/services/last_tab_store.dart';
 import 'package:playoncon/services/schedule_repository.dart';
 import 'package:playoncon/theme/poc_theme.dart';
 import 'package:playoncon/widgets/adaptive_navigation.dart';
@@ -36,6 +38,8 @@ Future<void> _openMap(
         venueLocationsProvider.overrideWith((ref) async => [_venue]),
         calibrationStoreProvider.overrideWithValue(_EmptyCalibrationStore()),
         scheduleRepositoryProvider.overrideWith(ScheduleRepository.new),
+        // The map only streams GPS while its tab is selected.
+        selectedTabProvider.overrideWith((_) => LastTabStore(mapTabIndex)),
       ],
       child: MaterialApp(
         theme: PocTheme.light(),

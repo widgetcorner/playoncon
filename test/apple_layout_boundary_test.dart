@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playoncon/services/apple_layout.dart';
@@ -166,23 +168,23 @@ void main() {
         await tester.pumpAndSettle();
         const overlayKey = ValueKey('fold-overlay');
         if (sheet) {
-          showModalBottomSheet<void>(
+          unawaited(showModalBottomSheet<void>(
             context: context,
             builder: (_) => const SizedBox(
               key: overlayKey,
               width: double.infinity,
               height: 160,
             ),
-          );
+          ));
         } else {
-          showDialog<void>(
+          unawaited(showDialog<void>(
             context: context,
             builder: (_) => const SimpleDialog(
               key: overlayKey,
               title: Text('Add a reminder?'),
               children: [Text('No reminder')],
             ),
-          );
+          ));
         }
         await tester.pumpAndSettle();
         final overlay = tester.element(find.byKey(overlayKey));

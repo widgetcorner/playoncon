@@ -25,8 +25,6 @@ final _event = Event(
   endTime: DateTime(2026, 7, 9, 17),
   locationKey: 'gaming',
   locationDisplayName: 'Main Gaming',
-  track: 'Apprentice',
-  presenter: 'Casey',
   attributes: const ['SF', 'AT'],
   subSchedule: [
     ScheduleItem(label: 'Learn to play', time: DateTime(2026, 7, 9, 16)),
@@ -71,6 +69,11 @@ class _Notifications extends NotificationService {
 
   @override
   Future<void> cancel(String eventId) async {}
+}
+
+class _DeniedNotifications extends _Notifications {
+  @override
+  Future<bool> requestPermission() async => false;
 }
 
 Widget _app(
@@ -121,6 +124,33 @@ Widget _savePage() => Consumer(
 );
 
 void main() {
+  testWidgets('saving only promises a reminder that will arrive', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(_savePage()));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('At start time'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved with a reminder'), findsOneWidget);
+  });
+
+  testWidgets('saving with notifications denied says how to enable them', (
+    tester,
+  ) async {
+    final saved = _Saved();
+    await tester.pumpWidget(
+      _app(_savePage(), saved: saved, notifications: _DeniedNotifications()),
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('At start time'));
+    await tester.pumpAndSettle();
+    expect(saved.isSaved(_event.id), isTrue);
+    expect(find.text('Saved with a reminder'), findsNothing);
+    expect(find.textContaining('Turn on notifications'), findsOneWidget);
+  });
+
   testWidgets(
     'attribute badges announce their meaning without emoji or codes',
     (tester) async {
@@ -195,8 +225,6 @@ void main() {
       isTrue,
     );
     expect(find.bySemanticsLabel('Location: Main Gaming'), findsOneWidget);
-    expect(find.bySemanticsLabel('Track: Apprentice'), findsOneWidget);
-    expect(find.bySemanticsLabel('Presenter: Casey'), findsOneWidget);
     semantics.dispose();
   });
 

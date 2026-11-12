@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/event.dart';
+import '../../services/app_clock.dart';
 import '../../services/notification_service.dart';
 import '../../services/saved_events_store.dart';
 
@@ -28,15 +31,29 @@ Future<void> toggleSaved(
 
   store.save(event.id, choice);
   final notifications = ref.read(notificationServiceProvider);
+  // Read before the awaits below: the widget (and its ref) may be gone after.
+  final now = ref.read(appClockProvider)();
+  var allowed = true;
   if (!choice.isNone) {
-    await notifications.requestPermission();
+    allowed = await notifications.requestPermission();
   }
   await notifications.schedule(event, choice);
 
   if (context.mounted && !choice.isNone) {
+    // Only promise a reminder that will actually arrive.
+    final String message;
+    if (!allowed) {
+      message =
+          'Saved. Turn on notifications for Play On Con in Settings to get '
+          'the reminder.';
+    } else if (NotificationService.fireTime(event, choice, now) == null) {
+      message = 'Saved. That reminder time has already passed.';
+    } else {
+      message = 'Saved with a reminder';
+    }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Saved with a reminder')));
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -66,7 +83,8 @@ Future<Reminder?> _showReminderDialog(BuildContext context, WidgetRef ref) {
           onTap: () async {
             final minutes = await _showMinutePicker(ctx, lastCustom ?? 15);
             if (minutes == null) return; // back out, keep dialog open
-            ref.read(lastCustomReminderProvider.notifier).set(minutes);
+            // Remembering the value for next time needn't hold up the dialog.
+            unawaited(ref.read(lastCustomReminderProvider.notifier).set(minutes));
             if (ctx.mounted) Navigator.pop(ctx, Reminder.minutes(minutes));
           },
         ),

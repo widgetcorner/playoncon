@@ -15,6 +15,10 @@ class LastTabStore extends StateNotifier<int> {
   LastTabStore(super.initial);
 
   static const int firstLaunchTab = 2;
+
+  /// Schedule, Map, Info. A persisted index outside this range (corrupt file,
+  /// or a tab removed in a later version) would otherwise crash every launch.
+  static const int tabCount = 3;
   static const _fileName = 'last_tab.json';
 
   static Future<File> _file() async {
@@ -27,7 +31,7 @@ class LastTabStore extends StateNotifier<int> {
       final f = await _file();
       if (!await f.exists()) return firstLaunchTab;
       final v = jsonDecode(await f.readAsString());
-      if (v is int && v >= 0) return v;
+      if (v is int && v >= 0 && v < tabCount) return v;
     } catch (_) {
       // ignore — fall through to default
     }

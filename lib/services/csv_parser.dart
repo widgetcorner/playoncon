@@ -2,6 +2,7 @@ import 'package:csv/csv.dart';
 
 import '../models/event.dart';
 import '../models/venue_location.dart';
+import 'stable_hash.dart';
 
 /// A merged-cell range from a Google Sheet. `endRow`/`endCol` are exclusive,
 /// matching the Sheets API v4 shape.
@@ -668,8 +669,6 @@ class CsvScheduleParser {
         endTime: newEnd,
         locationKey: e.locationKey,
         locationDisplayName: e.locationDisplayName,
-        track: e.track,
-        presenter: e.presenter,
         details: e.details,
         attributes: e.attributes,
         subSchedule: e.subSchedule,
@@ -767,9 +766,8 @@ class CsvScheduleParser {
     caseSensitive: false,
   );
 
-  String _stableId(String title, DateTime start, String location) {
-    return '${title.hashCode}_${start.millisecondsSinceEpoch}_${location.hashCode}';
-  }
+  String _stableId(String title, DateTime start, String location) =>
+      stableEventId(title, start, location);
 }
 
 class _ExtractedCell {

@@ -27,9 +27,6 @@ class AppConfig {
   static const String programUrl =
       String.fromEnvironment('POC_PROGRAM_URL');
 
-  static const String oneSignalAppId =
-      String.fromEnvironment('POC_ONESIGNAL_APP_ID');
-
   /// Thursday of the convention, formatted yyyy-MM-dd.
   /// Used to anchor the grid-CSV schedule (which only carries day-of-week + time of day).
   static const String eventThursday =
@@ -88,7 +85,6 @@ class AppConfig {
   static bool get hasScheduleViewUrl => scheduleViewUrl.isNotEmpty;
   static bool get hasDiscordUrl => discordInviteUrl.isNotEmpty;
   static bool get hasProgramUrl => programUrl.isNotEmpty;
-  static bool get hasOneSignalId => oneSignalAppId.isNotEmpty;
   static bool get hasEventThursday => eventThursday.isNotEmpty;
   static bool get hasSupabaseConfig =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;

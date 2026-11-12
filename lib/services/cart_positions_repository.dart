@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../models/cart_position.dart';
+import 'server_clock.dart';
 
 /// How long a cart's last report stays "live" on the map. Drivers post every
 /// ~10s; a 2-minute window forgives brief tunnels/garages without leaving
@@ -21,8 +22,10 @@ const Duration _sweepEvery = Duration(seconds: 30);
 /// it unconditionally. When configured, the provider:
 ///   1. Loads the active carts (for `display_name`) and the latest position
 ///      per cart from `cart_positions`.
-///   2. Subscribes to Realtime INSERTs on `cart_positions`.
-///   3. Periodically drops entries older than [_staleAfter].
+///   2. Subscribes to Realtime INSERTs and UPDATEs on `cart_positions`.
+///   3. Periodically drops entries older than [_staleAfter], measured on the
+///      server's clock as estimated by [ServerClock] — a phone with a wrong
+///      clock would otherwise hide every cart, or keep ghosts around.
 final cartPositionsProvider =
     StreamProvider<Map<String, CartPosition>>((ref) {
   if (!AppConfig.hasSupabaseConfig) {
@@ -32,13 +35,17 @@ final cartPositionsProvider =
   final controller = StreamController<Map<String, CartPosition>>();
   final byCart = <String, CartPosition>{};
   final cartNames = <String, String>{};
+  // Carts whose name has been asked for since launch, so a nameless cart
+  // posting every 10s triggers one lookup, not one per post.
+  final nameRequested = <String>{};
   final client = Supabase.instance.client;
+  final serverClock = ServerClock();
   RealtimeChannel? channel;
   Timer? sweep;
   var disposed = false;
 
   Map<String, CartPosition> snapshot() {
-    final now = DateTime.now().toUtc();
+    final now = serverClock.now(DateTime.now().toUtc());
     byCart.removeWhere((_, p) => now.difference(p.updatedAt) > _staleAfter);
     return Map.unmodifiable(byCart);
   }
@@ -60,17 +67,14 @@ final cartPositionsProvider =
         if (id != null && name != null) cartNames[id] = name;
       }
 
-      // Pull recent positions (last ~5 minutes) and reduce to latest-per-cart.
-      // A small window keeps the initial fetch cheap as the table grows.
-      final since = DateTime.now()
-          .toUtc()
-          .subtract(_staleAfter * 2)
-          .toIso8601String();
+      // `post_position` upserts one row per cart, so this is one row per
+      // cart ever registered — no time filter needed (a device-clock cutoff
+      // would hide every cart on a phone whose clock runs fast). Stale rows
+      // are dropped by the next snapshot.
       final rows = await client
           .from('cart_positions')
           .select(
               'cart_id, lat, lng, heading, speed, driver_name, updated_at')
-          .gte('updated_at', since)
           .order('updated_at', ascending: false);
       for (final row in rows) {
         final pos = CartPosition.fromJson(
@@ -94,17 +98,45 @@ final cartPositionsProvider =
     // (`ON CONFLICT DO UPDATE`). Postgres logical replication reports the
     // first post as INSERT and every subsequent post as UPDATE, so we listen
     // to both — otherwise carts would only appear on their first-ever post.
+    // A cart registered after launch isn't in the bootstrap lookup, and
+    // Realtime payloads don't carry `display_name` — fetch it once, then
+    // patch the cart already on the map.
+    Future<void> fetchName(String cartId) async {
+      if (!nameRequested.add(cartId)) return;
+      try {
+        final row = await client
+            .from('carts')
+            .select('display_name')
+            .eq('id', cartId)
+            .maybeSingle();
+        final name = row?['display_name'] as String?;
+        if (name == null || disposed) return;
+        cartNames[cartId] = name;
+        final current = byCart[cartId];
+        if (current != null && current.displayName == null) {
+          byCart[cartId] = current.copyWith(displayName: name);
+          emit();
+        }
+      } catch (e) {
+        // Allow a retry on the next post rather than staying nameless.
+        nameRequested.remove(cartId);
+        debugPrint('cart name lookup failed: $e');
+      }
+    }
+
     void handleRow(Map<String, dynamic> row) {
       try {
         final pos = CartPosition.fromJson(
           row,
           displayName: cartNames[row['cart_id'] as String?],
         );
+        serverClock.observe(pos.updatedAt, DateTime.now().toUtc());
         final existing = byCart[pos.cartId];
         if (existing == null || pos.updatedAt.isAfter(existing.updatedAt)) {
           byCart[pos.cartId] = pos;
           emit();
         }
+        if (pos.displayName == null) unawaited(fetchName(pos.cartId));
       } catch (e) {
         debugPrint('cart_positions realtime decode failed: $e');
       }
@@ -126,7 +158,15 @@ final cartPositionsProvider =
         )
         .subscribe();
 
-    sweep = Timer.periodic(_sweepEvery, (_) => emit());
+    // Only emit when the sweep actually dropped a cart: every emit rebuilds
+    // the map's pin overlay, and most ticks change nothing.
+    sweep = Timer.periodic(_sweepEvery, (_) {
+      final before = byCart.length;
+      final current = snapshot();
+      if (current.length != before && !disposed && !controller.isClosed) {
+        controller.add(current);
+      }
+    });
   }
 
   bootstrap();

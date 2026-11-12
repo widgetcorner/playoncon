@@ -89,10 +89,20 @@ class SchedulePage extends ConsumerWidget {
             constraints: const BoxConstraints(maxWidth: 760),
             child: Column(
               children: [
-                if (isOffline) const _OfflineBanner(),
-                if (state.errorMessage != null)
-                  _ErrorBanner(state.errorMessage!),
+                // Offline already explains why the sync failed; a second
+                // "no connection" banner under it would only repeat it.
+                // At large text sizes a banner can run several lines, so it
+                // gets at most a third of the height and scrolls past that.
+                if (isOffline || state.errorMessage != null)
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: isOffline
+                          ? const _OfflineBanner()
+                          : _ErrorBanner(state.errorMessage!),
+                    ),
+                  ),
                 Expanded(
+                  flex: 2,
                   child: TabBarView(
                     children: [
                       _EventList(events: allEvents, savedOnly: false),
@@ -155,7 +165,9 @@ class _EventListState extends ConsumerState<_EventList> {
         if (top == null || p.index < top.index) top = p;
       }
     }
-    if (top == null) return;
+    // Positions can briefly describe the previous, longer list after a sync
+    // or an un-save shortens it.
+    if (top == null || top.index >= _items.length) return;
     final topItem = _items[top.index];
     if (topItem is String && top.itemLeadingEdge >= 0) {
       if (_stickyDayKey.value != null) _stickyDayKey.value = null;
@@ -179,8 +191,26 @@ class _EventListState extends ConsumerState<_EventList> {
         ? widget.events.where((e) => saved.containsKey(e.id)).toList()
         : widget.events;
 
+    Future<void> refresh() =>
+        ref.read(scheduleRepositoryProvider.notifier).refresh();
+
     if (visible.isEmpty) {
-      return widget.savedOnly ? const _SavedEmptyState() : const _EmptyState();
+      // Fill the viewport with a scrollable so the empty state can still be
+      // pulled to refresh — it is exactly when a retry is most wanted.
+      return RefreshIndicator(
+        onRefresh: refresh,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: widget.savedOnly
+                  ? const _SavedEmptyState()
+                  : const _EmptyState(),
+            ),
+          ),
+        ),
+      );
     }
 
     // Flatten into header + event rows so a single ListView scrolls the lot.
@@ -207,7 +237,7 @@ class _EventListState extends ConsumerState<_EventList> {
     });
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(scheduleRepositoryProvider.notifier).refresh(),
+      onRefresh: refresh,
       child: Column(
         children: [
           ValueListenableBuilder<String?>(
@@ -222,6 +252,8 @@ class _EventListState extends ConsumerState<_EventList> {
               itemCount: items.length,
               initialScrollIndex: initialIndex,
               itemPositionsListener: _itemPositionsListener,
+              // A short list (two saved sessions) must still be pullable.
+              physics: const AlwaysScrollableScrollPhysics(),
               itemBuilder: (_, i) {
                 final item = items[i];
                 if (item is String) return _DayHeader(dayKey: item);
@@ -292,7 +324,6 @@ class _EventTile extends ConsumerWidget {
     final subtitleLine = [
       '${timeFmt.format(event.startTime)} – ${timeFmt.format(event.endTime)}',
       if (event.locationDisplayName != null) event.locationDisplayName!,
-      if (event.track != null) event.track!,
     ].join(' · ');
 
     return ListTile(
@@ -371,10 +402,10 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: SingleChildScrollView(
+      child: Padding(
         padding: EdgeInsets.all(32),
         child: Text(
-          'No events yet. Pull to refresh once the schedule URL is set.',
+          'No events yet. Pull down to refresh.',
           textAlign: TextAlign.center,
         ),
       ),
@@ -388,7 +419,7 @@ class _SavedEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Center(
-      child: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
